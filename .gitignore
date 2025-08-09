@@ -7,7 +7,8 @@ ENV/
 # app files and folders
 input/
 classified/
-decision.csv
+decisions.csv
+.llm_cache/
 
 # Vim/Neovim — swap files
 *.swp
