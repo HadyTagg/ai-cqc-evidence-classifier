@@ -163,8 +163,8 @@ quality_statements:
 
 # Folder path templates used for proposed storage locations
 path_templates:
-  Safe: "Safe/{qs_id}/{category}"
-  Effective: "Effective/{qs_id}/{category}"
-  Caring: "Caring/{qs_id}/{category}"
-  Responsive: "Responsive/{qs_id}/{category}"
-  Well-led: "Well-led/{qs_id}/{category}"
+  Safe: "Safe/{qs_title}/{category}"
+  Effective: "Effective/{qs_title}/{category}"
+  Caring: "Caring/{qs_title}/{category}"
+  Responsive: "Responsive/{qs_title}/{category}"
+  Well-led: "Well-led/{qs_title}/{category}"

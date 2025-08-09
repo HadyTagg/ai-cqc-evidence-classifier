@@ -8,3 +8,11 @@ ENV/
 input/
 classified/
 decision.csv
+
+# Vim/Neovim — swap files
+*.swp
+*.swo
+*.swn
+.*.swp
+.*.swo
+.*.swn

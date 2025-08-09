@@ -208,6 +208,19 @@ def list_evidence_categories(taxonomy: Dict[str, Any]) -> List[str]:
 
 
 def propose_storage_paths(taxonomy: Dict[str, Any], qs_ids: List[str], categories: List[str]) -> List[str]:
+    # Support templates with {domain}, {qs_id}, {qs_title}, {qs_id_and_title}, {category}
+    def sanitize(s: str) -> str:
+        s = (s or "").strip()
+        # replace slashes with hyphen without using backslash literals
+        s = s.replace('/', '-').replace(chr(92), '-')
+        # remove other illegal filesystem characters
+        illegal = '<>:"|?*'
+        for ch in illegal:
+            s = s.replace(ch, '')
+        # collapse whitespace
+        s = ' '.join(s.split())
+        return s[:100]
+
     qs_map = {q["id"]: q for q in taxonomy.get("quality_statements", [])}
     templates = taxonomy.get("path_templates", {})
     paths = []
@@ -216,12 +229,15 @@ def propose_storage_paths(taxonomy: Dict[str, Any], qs_ids: List[str], categorie
         if not q:
             continue
         domain = q.get("domain", "Misc")
-        tmpl = templates.get(domain, "{domain}/{qs_id}/{category}")
+        title = q.get("title", qid)
+        tmpl = templates.get(domain, "{domain}/{qs_title}/{category}")
         for cat in categories:
             path = (
-                tmpl.replace("{domain}", domain)
-                .replace("{qs_id}", qid)
-                .replace("{category}", cat)
+                tmpl.replace("{domain}", sanitize(domain))
+                    .replace("{qs_id}", sanitize(qid))
+                    .replace("{qs_title}", sanitize(title))
+                    .replace("{qs_id_and_title}", sanitize(f"{qid} – {title}"))
+                    .replace("{category}", sanitize(cat))
             )
             paths.append(path)
     return sorted(set(paths))
