@@ -135,8 +135,7 @@ def extract_text_from_pdf(path: Path) -> str:
 def extract_text_from_docx(path: Path) -> str:
     try:
         d = docx.Document(str(path))
-        return "
-".join(p.text for p in d.paragraphs)
+        return "\n".join(p.text for p in d.paragraphs)
     except Exception as e:
         return f"[DOCX extraction error: {e}]"
 
@@ -152,12 +151,9 @@ def extract_text_from_xlsx(path: Path) -> str:
         dfs = pd.read_excel(path, sheet_name=None)
         parts = []
         for name, df in dfs.items():
-            parts.append(f"
---- Sheet: {name} ---
-")
+            parts.append(f"\n--- Sheet: {name} ---\n")
             parts.append(df.to_csv(index=False))
-        return "
-".join(parts)
+        return "\n".join(parts)
     except Exception as e:
         return f"[XLSX read error: {e}]"
 
@@ -165,8 +161,7 @@ def html_to_text(html: str) -> str:
     soup = BeautifulSoup(html, "lxml")
     for tag in soup(["script", "style"]):
         tag.extract()
-    return soup.get_text("
-", strip=True)
+    return soup.get_text("\n", strip=True)
 
 def extract_text_from_eml(path: Path) -> Tuple[str, List[Dict[str, Any]]]:
     try:
@@ -179,8 +174,7 @@ def extract_text_from_eml(path: Path) -> Tuple[str, List[Dict[str, Any]]]:
             "Date": str(msg.get("Date", "")),
             "Subject": str(msg.get("Subject", "")),
         }
-        header_text = "
-".join(f"{k}: {v}" for k, v in headers.items() if v)
+        header_text = "\n".join(f"{k}: {v}" for k, v in headers.items() if v)
         body_parts = []
         attachments = []
         if msg.is_multipart():
@@ -205,11 +199,7 @@ def extract_text_from_eml(path: Path) -> Tuple[str, List[Dict[str, Any]]]:
                 body_parts.append(msg.get_content())
             elif ct == "text/html":
                 body_parts.append(html_to_text(msg.get_content()))
-        full_text = header_text + "
-
-" + "
-
-".join(body_parts).strip()
+        full_text = header_text + "\n\n" + "\n".join(body_parts).strip()
         return full_text, attachments
     except Exception as e:
         return f"[EML parse error: {e}]", []
@@ -221,16 +211,12 @@ def extract_text_from_eml(path: Path) -> Tuple[str, List[Dict[str, Any]]]:
 def text_to_image(text: str, width: int = 1200, padding: int = 20) -> Image.Image:
     if Image is None or ImageDraw is None:
         raise RuntimeError("Pillow not available for text rasterization")
-    text = (text or "").replace("
-", "")
-    # Basic wrapping
+    text = (text or "").replace("\r", "")
     lines = []
-    for para in text.split("
-"):
+    for para in text.split("\n"):
         if not para:
             lines.append("")
             continue
-        # crude wrap by char count
         wrap = 110
         while len(para) > wrap:
             cut = para.rfind(" ", 0, wrap)
@@ -240,7 +226,6 @@ def text_to_image(text: str, width: int = 1200, padding: int = 20) -> Image.Imag
             para = para[cut:].lstrip()
         lines.append(para)
     font = ImageFont.load_default()
-    # Estimate height
     line_h = 16
     height = padding * 2 + max(200, line_h * (len(lines) + 1))
     img = Image.new("RGB", (width, height), "white")
@@ -301,8 +286,7 @@ def rasterize_to_images(path: Path, dpi: int = 200, max_pages: int = 2) -> List[
     if ext == ".xlsx":
         return [text_to_image(extract_text_from_xlsx(path))]
     # Unknown -> best effort
-    return [text_to_image(f"[Unsupported for rasterization: {ext}]
-{path}")]
+    return [text_to_image(f"[Unsupported for rasterization: {ext}] {path}")]
 
 # ---------------------
 # Taxonomy & Paths
@@ -319,8 +303,7 @@ def list_evidence_categories(taxonomy: Dict[str, Any]) -> List[str]:
     return taxonomy.get("evidence_categories", [])
 
 def _sanitize(s: str) -> str:
-    s = (s or '').strip().replace('/', '-').replace('\\
-', '-')
+    s = (s or "").strip().replace("/", "-").replace("\\", "-")
     for ch in '<>:"|?*':
         s = s.replace(ch, '')
     return ' '.join(s.split())[:100]
@@ -363,8 +346,8 @@ class LLMProvider:
         system_prompt = (
             "You are a compliance assistant for a CQC-regulated care service. "
             "Given an evidence item (text extracted from a document or email), propose one or more relevant CQC "
-            "Single Assessment Framework Quality Statements and one or more Evidence Categories. "
-            "Return ONLY a JSON object matching the schema. Be concise with rationale."
+            "Propose one or more relevant CQC Quality Statements and the the main Evidence Category that this item supports. "
+            "Return ONLY a JSON object matching the schema. Give me a detailed rationale."
         )
         user_payload = {
             "schema": {
@@ -402,8 +385,8 @@ class LLMProvider:
         system_prompt = (
             "You are a compliance assistant for a CQC-regulated care service. "
             "You will be given one or more images of an evidence item (a scanned document, email, report, or photo). "
-            "Propose one or more relevant CQC Quality Statements and Evidence Categories that this item supports. "
-            "Return ONLY a JSON object per the schema."
+            "Propose one or more relevant CQC Quality Statements and the main Evidence Category that this item supports. "
+            "Return ONLY a JSON object per the schema. Give me a detailed rationale."
         )
         content = [{"type": "text", "text": json.dumps({
             "schema": {
@@ -493,11 +476,6 @@ with st.sidebar:
     max_retries = st.number_input("Max retries on 429/5xx", min_value=0, max_value=10, value=3, step=1)
     use_cache = st.checkbox("Use cached results (by content)", value=True)
     cooldown_secs = st.number_input("Cooldown between calls (sec)", min_value=0, max_value=120, value=10, step=5)
-    max_chars = st.number_input("Max chars sent to LLM (text mode)", min_value=1000, max_value=12000, value=4000, step=500)
-
-    st.markdown("**Classification mode**")
-    mode = st.radio("Choose mode", ["Text/OCR", "Image-only (Vision)"] , index=1)
-
     st.markdown("**OCR / Rasterization**")
     ocr_lang = st.text_input("OCR languages (Tesseract codes)", value="eng")
     ocr_dpi = st.number_input("OCR/Rasterize DPI", min_value=100, max_value=600, value=200, step=50)
@@ -533,49 +511,14 @@ with colA:
         st.info("Drop some files into the input folder to begin (supported: .pdf .docx .xlsx .csv .txt .eml .png .jpg .jpeg .tif .tiff .bmp .webp .heic).")
 
 with colB:
-    text = ""; images = []
+    images = []
     if file_selected:
-        if mode == "Image-only (Vision)":
-            try:
-                images = rasterize_to_images(file_selected, dpi=int(ocr_dpi), max_pages=int(ocr_max_pages))
-                st.markdown(f"**Preview (images): {file_selected.name}**")
-                st.image(images, caption=[f"image {i+1}" for i in range(len(images))], use_column_width=True)
-            except Exception as e:
-                st.error(f"Rasterization error: {e}")
-        else:
-            # Text path: use native extraction + (optional) light OCR via pdf2image+pytesseract on first pages
-            ext = file_selected.suffix.lower()
-            if ext == ".pdf":
-                text = extract_text_from_pdf(file_selected)
-                if (not text or len(text.strip()) < 40) and convert_from_path is not None and pytesseract is not None:
-                    # fallback quick OCR of first pages
-                    try:
-                        imgs = convert_from_path(str(file_selected), dpi=int(ocr_dpi))[:int(ocr_max_pages)]
-                        ocr_texts = [pytesseract.image_to_string(im, lang=ocr_lang or "eng") for im in imgs]
-                        text = "
-
-".join([text] + ocr_texts)
-                    except Exception:
-                        pass
-            elif ext == ".docx":
-                text = extract_text_from_docx(file_selected)
-            elif ext == ".csv":
-                text = extract_text_from_csv(file_selected)
-            elif ext == ".xlsx":
-                text = extract_text_from_xlsx(file_selected)
-            elif ext == ".eml":
-                text, _ = extract_text_from_eml(file_selected)
-            elif ext in {".png", ".jpg", ".jpeg", ".tif", ".tiff", ".bmp", ".webp", ".heic"} and pytesseract is not None:
-                try:
-                    text = pytesseract.image_to_string(Image.open(file_selected), lang=ocr_lang or "eng")
-                except Exception as e:
-                    text = f"[Image OCR error: {e}]"
-            elif ext == ".txt":
-                text = extract_text_from_txt(file_selected)
-            else:
-                text = f"[Unsupported file type: {ext}]"
-            st.markdown(f"**Preview (text): {file_selected.name}**")
-            st.code(text[:8000] if text else "[No text extracted]", language="markdown")
+        try:
+            images = rasterize_to_images(file_selected, dpi=int(ocr_dpi), max_pages=int(ocr_max_pages))
+            st.markdown(f"**Preview (images): {file_selected.name}**")
+            st.image(images, caption=[f"image {i+1}" for i in range(len(images))], use_column_width=True)
+        except Exception as e:
+            st.error(f"Rasterization error: {e}")
 
 # Run classification
 if 'next_ok_at' not in st.session_state:
@@ -590,26 +533,16 @@ if st.button("Run LLM on this file"):
             wait = int(st.session_state['next_ok_at'] - now)
             st.warning(f"Cooling down. Try again in {wait}s to avoid rate limits.")
         else:
-            st.session_state['next_ok_at'] = now +  float(1)
+            st.session_state['next_ok_at'] = now + float(cooldown_secs)
             with st.spinner("Asking the model…"):
-                if mode == "Image-only (Vision)":
-                    key = build_llm_cache_key("[image-mode]" + str(file_selected), taxonomy, model, mode)
-                    cached = llm_cache_read(key) if use_cache else None
-                    if cached:
-                        result = cached
-                    else:
-                        result = prov.classify_images(images or rasterize_to_images(file_selected, dpi=int(ocr_dpi), max_pages=int(ocr_max_pages)), taxonomy)
-                        if use_cache and result and not result.get('error'):
-                            llm_cache_write(key, result)
+                key = build_llm_cache_key("[image-mode]" + str(file_selected), taxonomy, model, "Image-only (Vision)")
+                cached = llm_cache_read(key) if use_cache else None
+                if cached:
+                    result = cached
                 else:
-                    key = build_llm_cache_key(text or "", taxonomy, model, mode)
-                    cached = llm_cache_read(key) if use_cache else None
-                    if cached:
-                        result = cached
-                    else:
-                        result = prov.classify_text(text or "", taxonomy, max_chars=int(max_chars))
-                        if use_cache and result and not result.get('error'):
-                            llm_cache_write(key, result)
+                    result = prov.classify_images(images or rasterize_to_images(file_selected, dpi=int(ocr_dpi), max_pages=int(ocr_max_pages)), taxonomy)
+                    if use_cache and result and not result.get('error'):
+                        llm_cache_write(key, result)
             st.session_state['llm_result'] = result
 
 result = st.session_state.get('llm_result')
@@ -623,9 +556,7 @@ if result:
         st.markdown("**Model’s suggested Quality Statements:**")
         for q in sugg_qs:
             qid = q.get("id"); dom = q.get("domain") or qs_map.get(qid, {}).get("domain", "?"); title = q.get("title") or qs_map.get(qid, {}).get("title", "")
-            st.write(f"- **{qid}** ({dom}) – {title} | confidence: {q.get('confidence','?')}
-
-  rationale: {q.get('rationale','')}")
+            st.write(f"- **{qid}** ({dom}) – {title} | confidence: {q.get('confidence','?')}  rationale: {q.get('rationale','')}")
         default_ids = [q.get("id") for q in sugg_qs if q.get("id") in qs_map]
         selected_qs = st.multiselect("Confirm Quality Statements", options=qs_id_list, default=default_ids, format_func=lambda qid: f"[{qs_map[qid]['domain']}] {qid} – {qs_map[qid]['title']}" if qid in qs_map else qid)
         sugg_cats = [c for c in result.get("evidence_categories", []) if c in cat_options]
@@ -643,7 +574,7 @@ if result:
         def write_decision_log(row: Dict[str, Any]):
             file_exists = Path(DEFAULT_DECISIONS_LOG).exists()
             with open(DEFAULT_DECISIONS_LOG, "a", newline="", encoding="utf-8") as f:
-                writer = csv.DictWriter(f, fieldnames=["timestamp","file","provider","model","quality_statements","evidence_categories","paths","reviewer","notes","action","mode"])
+                writer = csv.DictWriter(f, fieldnames=["timestamp","file","provider","model","quality_statements","evidence_categories","paths","reviewer","notes","action"])
                 if not file_exists: writer.writeheader()
                 writer.writerow(row)
         if approve:
@@ -674,7 +605,6 @@ if result:
                     "reviewer": reviewer,
                     "notes": notes,
                     "action": "approved",
-                    "mode": mode,
                 })
                 st.success("Filed to all selected locations.")
         if reject:
@@ -689,7 +619,6 @@ if result:
                 "reviewer": reviewer,
                 "notes": notes,
                 "action": "rejected",
-                "mode": mode,
             })
             st.info("Not filed. Decision recorded.")
 
