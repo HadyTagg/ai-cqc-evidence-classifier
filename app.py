@@ -28,10 +28,57 @@ import docx
 from email import policy
 from email.parser import BytesParser
 from bs4 import BeautifulSoup
+# OCR imports
+try:
+    from PIL import Image
+except Exception:
+    Image = None
+try:
+    import pytesseract
+except Exception:
+    pytesseract = None
+try:
+    from pdf2image import convert_from_path
+except Exception:
+    convert_from_path = None
+# Optional HEIC support
+try:
+    import pillow_heif as heif
+    if heif:
+        heif.register_heif_opener()
+except Exception:
+    heif = None
 
 APP_TITLE = "CQC Evidence Classifier"
 DEFAULT_DECISIONS_LOG = "decisions.csv"
-SUPPORTED_EXTS = {".txt", ".pdf", ".docx", ".csv", ".xlsx", ".eml"}
+SUPPORTED_EXTS = {".txt", ".pdf", ".docx", ".csv", ".xlsx", ".eml", ".png", ".jpg", ".jpeg", ".tif", ".tiff", ".bmp", ".webp", ".heic"}
+
+# OCR cache
+OCR_CACHE_DIR = Path('.ocr_cache')
+OCR_CACHE_DIR.mkdir(exist_ok=True)
+
+def build_ocr_cache_key(file_bytes: bytes, params: Dict[str, Any]) -> str:
+    payload = {
+        'len': len(file_bytes or b''),
+        'sha': hashlib.sha256(file_bytes or b'').hexdigest(),
+        **params,
+    }
+    return hashlib.sha256(json.dumps(payload, sort_keys=True).encode('utf-8')).hexdigest()
+
+def ocr_cache_read(key: str) -> str | None:
+    p = OCR_CACHE_DIR / f"{key}.txt"
+    if p.exists():
+        try:
+            return p.read_text(encoding='utf-8')
+        except Exception:
+            return None
+    return None
+
+def ocr_cache_write(key: str, text: str) -> None:
+    try:
+        (OCR_CACHE_DIR / f"{key}.txt").write_text(text, encoding='utf-8')
+    except Exception:
+        pass
 
 # Simple on-disk cache for LLM responses (keyed by content/model/taxonomy)
 CACHE_DIR = Path('.llm_cache')
@@ -66,6 +113,41 @@ def cache_write(key: str, data: Dict[str, Any]) -> None:
 # ---------------------
 # Helpers – Text Extraction
 # ---------------------
+
+def _ocr_available() -> bool:
+    return pytesseract is not None and Image is not None
+
+
+def _ocr_pdf_available() -> bool:
+    return _ocr_available() and convert_from_path is not None
+
+
+def ocr_image_file(path: Path, lang: str = 'eng') -> str:
+    if not _ocr_available():
+        return "[OCR unavailable: install Tesseract & Pillow]"
+    try:
+        img = Image.open(path)
+        return pytesseract.image_to_string(img, lang=lang or 'eng')
+    except Exception as e:
+        return f"[Image OCR error: {e}]"
+
+
+def ocr_pdf_file(path: Path, lang: str = 'eng', dpi: int = 300, max_pages: int = 0) -> str:
+    if not _ocr_pdf_available():
+        return "[PDF OCR unavailable: install Tesseract & Poppler (pdf2image)]"
+    try:
+        images = convert_from_path(str(path), dpi=int(dpi))
+        texts = []
+        for i, img in enumerate(images, start=1):
+            if max_pages and i > max_pages:
+                break
+            try:
+                texts.append(pytesseract.image_to_string(img, lang=lang or 'eng'))
+            except Exception as e:
+                texts.append(f"[Page {i} OCR error: {e}]")
+        return "\n\n\f\n\n".join(texts)
+    except Exception as e:
+        return f"[PDF OCR error: {e}]"
 
 def read_file_bytes(path: Path) -> bytes:
     with open(path, "rb") as f:
@@ -174,12 +256,43 @@ def extract_text_from_eml(path: Path) -> Tuple[str, List[Dict[str, Any]]]:
         return f"[EML parse error: {e}]", []
 
 
-def extract_text(path: Path) -> Tuple[str, List[Dict[str, Any]]]:
+def extract_text(path: Path, ocr_cfg: Dict[str, Any] | None = None) -> Tuple[str, List[Dict[str, Any]]]:
+    """
+    ocr_cfg keys:
+      enable (bool), pdf_mode ('auto'|'always'|'never'), lang (str), dpi (int), max_pages (int), auto_min_chars (int)
+    """
     ext = path.suffix.lower()
+    ocr_cfg = ocr_cfg or {}
+    enable_ocr = bool(ocr_cfg.get('enable', False))
+    pdf_mode = (ocr_cfg.get('pdf_mode') or 'auto').lower()
+    ocr_lang = ocr_cfg.get('lang') or 'eng'
+    ocr_dpi = int(ocr_cfg.get('dpi') or 300)
+    ocr_max_pages = int(ocr_cfg.get('max_pages') or 0)
+    auto_min_chars = int(ocr_cfg.get('auto_min_chars') or 40)
+
     if ext == ".txt":
         return extract_text_from_txt(path), []
     if ext == ".pdf":
-        return extract_text_from_pdf(path), []
+        # First try text extraction
+        txt = extract_text_from_pdf(path)
+        needs_ocr = False
+        if enable_ocr:
+            if pdf_mode == 'always':
+                needs_ocr = True
+            elif pdf_mode == 'auto':
+                # Very small text => likely scanned
+                if not txt or txt.strip() == '' or len(txt.strip()) < auto_min_chars or txt.startswith('[PDF extraction error'):
+                    needs_ocr = True
+        if needs_ocr:
+            b = read_file_bytes(path)
+            key = build_ocr_cache_key(b, {"kind":"pdf","lang":ocr_lang,"dpi":ocr_dpi,"max_pages":ocr_max_pages})
+            cached = ocr_cache_read(key)
+            if cached:
+                return cached, []
+            ocr_txt = ocr_pdf_file(path, lang=ocr_lang, dpi=ocr_dpi, max_pages=ocr_max_pages)
+            ocr_cache_write(key, ocr_txt)
+            return ocr_txt, []
+        return txt, []
     if ext == ".docx":
         return extract_text_from_docx(path), []
     if ext == ".csv":
@@ -188,6 +301,18 @@ def extract_text(path: Path) -> Tuple[str, List[Dict[str, Any]]]:
         return extract_text_from_xlsx(path), []
     if ext == ".eml":
         return extract_text_from_eml(path)
+    if ext in {".png", ".jpg", ".jpeg", ".tif", ".tiff", ".bmp", ".webp", ".heic"}:
+        if enable_ocr:
+            b = read_file_bytes(path)
+            key = build_ocr_cache_key(b, {"kind":"image","lang":ocr_lang})
+            cached = ocr_cache_read(key)
+            if cached:
+                return cached, []
+            text = ocr_image_file(path, lang=ocr_lang)
+            ocr_cache_write(key, text)
+            return text, []
+        else:
+            return "[OCR disabled – enable in sidebar to process images]", []
     return f"[Unsupported file type: {ext}]", []
 
 # ---------------------
@@ -396,6 +521,20 @@ with st.sidebar:
     use_cache = st.checkbox("Use cached results (by content)", value=True)
     cooldown_secs = st.number_input("Cooldown between calls (sec)", min_value=0, max_value=120, value=10, step=5)
     max_chars = st.number_input("Max chars sent to LLM", min_value=1000, max_value=12000, value=4000, step=500)
+
+    st.markdown("**OCR settings**")
+    enable_ocr = st.checkbox("Enable OCR for images & scanned PDFs", value=True)
+    ocr_pdf_mode = st.selectbox("OCR PDFs", ["Auto (if no text)", "Always", "Never"], index=0)
+    ocr_lang = st.text_input("OCR languages (Tesseract codes)", value="eng")
+    ocr_dpi = st.number_input("OCR render DPI (PDF)", min_value=150, max_value=600, value=300, step=50)
+    ocr_max_pages = st.number_input("OCR max pages (0 = all)", min_value=0, max_value=200, value=0, step=1)
+    auto_min_chars = st.number_input("Auto-OCR if extracted chars <", min_value=0, max_value=2000, value=40, step=10)
+    if enable_ocr:
+        if pytesseract is None or Image is None:
+            st.warning("OCR not available: install Tesseract & Pillow.")
+        if convert_from_path is None:
+            st.info("For scanned PDFs, install Poppler (poppler-utils) for pdf2image.")
+
     move_or_copy = st.radio("On approval, file by…", ["Copy", "Move"], index=0)
     st.caption("Nothing is filed without your approval. Every decision is logged.")
 
@@ -428,12 +567,20 @@ with colA:
         )
     else:
         file_selected = None
-        st.info("Drop some files into the input folder to begin (supported: .pdf .docx .xlsx .csv .txt .eml).")
+        st.info("Drop some files into the input folder to begin (supported: .pdf .docx .xlsx .csv .txt .eml .png .jpg .jpeg .tif .tiff .bmp .webp .heic).")
 
 with colB:
     text, attachments = ("", [])
     if file_selected:
-        text, attachments = extract_text(file_selected)
+        ocr_cfg = {
+            'enable': enable_ocr,
+            'pdf_mode': {'Auto (if no text)':'auto','Always':'always','Never':'never'}[ocr_pdf_mode],
+            'lang': ocr_lang,
+            'dpi': int(ocr_dpi),
+            'max_pages': int(ocr_max_pages),
+            'auto_min_chars': int(auto_min_chars),
+        }
+        text, attachments = extract_text(file_selected, ocr_cfg=ocr_cfg)
         st.markdown(f"**Preview: {file_selected.name}**")
         st.code(text[:8000] if text else "[No text extracted]", language="markdown")
         if attachments:
@@ -471,7 +618,14 @@ if st.session_state['batch_queue']:
         total = len(st.session_state['batch_queue'])
         for i, fpath in enumerate(list(st.session_state['batch_queue'])):
             try:
-                text_i, _ = extract_text(fpath)
+                text_i, _ = extract_text(fpath, ocr_cfg={
+                'enable': enable_ocr,
+                'pdf_mode': {'Auto (if no text)':'auto','Always':'always','Never':'never'}[ocr_pdf_mode],
+                'lang': ocr_lang,
+                'dpi': int(ocr_dpi),
+                'max_pages': int(ocr_max_pages),
+                'auto_min_chars': int(auto_min_chars),
+            })
                 key_i = build_cache_key(text_i or "", taxonomy, model)
                 cached_i = cache_read(key_i) if use_cache else None
                 if cached_i:
@@ -606,68 +760,3 @@ if result:
             if not signed_off:
                 st.warning("Please tick the sign‑off checkbox before approving.")
             else:
-                # File into all proposed paths
-                first_dest_file = None
-                original_path = file_selected
-                for idx, rel in enumerate(paths):
-                    dest_dir = output_dir / rel
-                    dest_dir.mkdir(parents=True, exist_ok=True)
-                    dest_file = dest_dir / file_selected.name
-                    if move_or_copy == "Copy":
-                        shutil.copy2(original_path, dest_file)
-                    else:  # Move
-                        if idx == 0:
-                            shutil.move(str(original_path), str(dest_file))
-                            first_dest_file = dest_file
-                        else:
-                            # subsequent paths: copy from the first destination
-                            shutil.copy2(first_dest_file, dest_file)
-                write_decision_log({
-                    "timestamp": dt.datetime.utcnow().isoformat(),
-                    "file": str(file_selected),
-                    "provider": provider,
-                    "model": model,
-                    "quality_statements": ",".join(selected_qs),
-                    "evidence_categories": ",".join(selected_cats),
-                    "paths": ";".join(paths),
-                    "reviewer": reviewer,
-                    "notes": notes,
-                    "action": f"Filed ({move_or_copy})",
-                })
-                st.success("Filed successfully and logged to decisions.csv.")
-        if reject:
-            write_decision_log({
-                "timestamp": dt.datetime.utcnow().isoformat(),
-                "file": str(file_selected),
-                "provider": provider,
-                "model": model,
-                "quality_statements": ",".join(selected_qs),
-                "evidence_categories": ",".join(selected_cats),
-                "paths": ";".join(paths),
-                "reviewer": reviewer,
-                "notes": notes,
-                "action": "Rejected (no filing)",
-            })
-            st.info("Decision recorded as Rejected. No files were moved/copied.")
-
-st.divider()
-st.caption(
-    "If using a cloud LLM, input text is sent to the provider’s API. For sensitive content, use the Ollama local option.\n"
-    "Keep `decisions.csv` as your audit trail showing human sign‑off for each item."
-)
-
-# --------------
-# Allow `python app.py` to behave like `streamlit run app.py`
-# --------------
-if __name__ == "__main__":
-    # If we are NOT already inside a Streamlit runtime, re-invoke via the CLI.
-    try:
-        from streamlit.web import cli as stcli
-        import sys
-        # Prevent infinite recursion if already invoked by streamlit
-        if not any(x.endswith("streamlit") for x in sys.argv[:1]):
-            sys.argv = ["streamlit", "run", os.path.abspath(__file__)]
-            raise SystemExit(stcli.main())
-    except Exception:
-        # Fallback: print helpful message
-        print("\nRun this app with:  streamlit run app.py\n")
