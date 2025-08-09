@@ -13,6 +13,8 @@ import requests
 import datetime as dt
 from pathlib import Path
 from typing import List, Dict, Any, Tuple
+import random
+import hashlib
 
 import yaml
 import pandas as pd
@@ -31,9 +33,40 @@ APP_TITLE = "CQC Evidence Classifier"
 DEFAULT_DECISIONS_LOG = "decisions.csv"
 SUPPORTED_EXTS = {".txt", ".pdf", ".docx", ".csv", ".xlsx", ".eml"}
 
+# Simple on-disk cache for LLM responses (keyed by content/model/taxonomy)
+CACHE_DIR = Path('.llm_cache')
+CACHE_DIR.mkdir(exist_ok=True)
+
+def build_cache_key(text: str, taxonomy: Dict[str, Any], model: str) -> str:
+    meta = taxonomy.get('metadata', {})
+    payload = {
+        'taxonomy_version': meta.get('version'),
+        'model': model,
+        'text_head': (text or '')[:10000],  # cap for key stability
+    }
+    return hashlib.sha256(json.dumps(payload, sort_keys=True).encode('utf-8')).hexdigest()
+
+def cache_read(key: str) -> Dict[str, Any] | None:
+    p = CACHE_DIR / f"{key}.json"
+    if p.exists():
+        try:
+            with open(p, 'r', encoding='utf-8') as f:
+                return json.load(f)
+        except Exception:
+            return None
+    return None
+
+def cache_write(key: str, data: Dict[str, Any]) -> None:
+    try:
+        with open(CACHE_DIR / f"{key}.json", 'w', encoding='utf-8') as f:
+            json.dump(data, f, ensure_ascii=False, indent=2)
+    except Exception:
+        pass
+
 # ---------------------
 # Helpers – Text Extraction
 # ---------------------
+
 def read_file_bytes(path: Path) -> bytes:
     with open(path, "rb") as f:
         return f.read()
@@ -185,7 +218,11 @@ def propose_storage_paths(taxonomy: Dict[str, Any], qs_ids: List[str], categorie
         domain = q.get("domain", "Misc")
         tmpl = templates.get(domain, "{domain}/{qs_id}/{category}")
         for cat in categories:
-            path = tmpl.replace("{domain}", domain).replace("{qs_id}", qid).replace("{category}", cat)
+            path = (
+                tmpl.replace("{domain}", domain)
+                .replace("{qs_id}", qid)
+                .replace("{category}", cat)
+            )
             paths.append(path)
     return sorted(set(paths))
 
@@ -193,12 +230,14 @@ def propose_storage_paths(taxonomy: Dict[str, Any], qs_ids: List[str], categorie
 # LLM Provider Abstraction
 # ---------------------
 class LLMProvider:
-    def __init__(self, provider: str, model: str, api_key: str = ""):
+    def __init__(self, provider: str, model: str, api_key: str = "", timeout: int = 60, max_retries: int = 3):
         self.provider = provider
         self.model = model
         self.api_key = api_key
+        self.timeout = timeout
+        self.max_retries = max_retries
 
-    def classify(self, text: str, taxonomy: Dict[str, Any]) -> Dict[str, Any]:
+    def classify(self, text: str, taxonomy: Dict[str, Any], max_chars: int = 6000) -> Dict[str, Any]:
         # Build prompt
         quality_statements = taxonomy.get("quality_statements", [])
         evidence_categories = taxonomy.get("evidence_categories", [])
@@ -245,7 +284,7 @@ class LLMProvider:
             },
             "quality_statements_options": qs_brief,
             "evidence_categories_options": evidence_categories,
-            "evidence_text_first_6000_chars": text[:6000],
+            "evidence_text_first_6000_chars": (text or "")[:max_chars],
         }
         if self.provider == "openai":
             return self._classify_openai(system_prompt, user_prompt)
@@ -255,8 +294,7 @@ class LLMProvider:
             raise ValueError("Unsupported provider")
 
     def _classify_openai(self, system_prompt: str, user_payload: Dict[str, Any]) -> Dict[str, Any]:
-        # Uses Chat Completions API compatible endpoint
-        # Assumes OPENAI_API_KEY is set or provided
+        # Uses Chat Completions API compatible endpoint with retry/backoff on 429/5xx
         url = "https://api.openai.com/v1/chat/completions"
         headers = {
             "Authorization": f"Bearer {self.api_key or os.getenv('OPENAI_API_KEY','')}",
@@ -271,13 +309,32 @@ class LLMProvider:
             ],
             "temperature": 0.1,
         }
-        resp = requests.post(url, headers=headers, json=data, timeout=60)
-        resp.raise_for_status()
-        content = resp.json()["choices"][0]["message"]["content"]
-        try:
-            return json.loads(content)
-        except json.JSONDecodeError:
-            return {"error": "Model did not return valid JSON", "raw": content}
+
+        attempt = 0
+        last_err = None
+        while attempt <= max(0, int(self.max_retries)):
+            try:
+                resp = requests.post(url, headers=headers, json=data, timeout=self.timeout)
+                if resp.status_code == 429 or 500 <= resp.status_code < 600:
+                    retry_after = resp.headers.get("Retry-After")
+                    wait = float(retry_after) if retry_after else min(10.0, (2 ** attempt) + random.random())
+                    time.sleep(wait)
+                    attempt += 1
+                    last_err = requests.HTTPError(f"HTTP {resp.status_code}")
+                    continue
+                resp.raise_for_status()
+                content = resp.json()["choices"][0]["message"]["content"]
+                try:
+                    return json.loads(content)
+                except json.JSONDecodeError:
+                    return {"error": "Model did not return valid JSON", "raw": content}
+            except (requests.Timeout, requests.ConnectionError) as e:
+                last_err = e
+                time.sleep(min(10.0, (2 ** attempt) + random.random()))
+                attempt += 1
+            except requests.HTTPError as e:
+                return {"error": f"HTTP error: {e}", "status": getattr(e.response, 'status_code', None), "raw": getattr(e.response, 'text', '')}
+        return {"error": f"Request failed after retries: {last_err}", "status": getattr(getattr(last_err, 'response', None), 'status_code', None)}
 
     def _classify_ollama(self, system_prompt: str, user_payload: Dict[str, Any]) -> Dict[str, Any]:
         # Local model via Ollama – simple single-shot prompt; instruct the model to output JSON
@@ -318,6 +375,11 @@ with st.sidebar:
     provider = st.selectbox("LLM provider", ["openai", "ollama"], index=0)
     model = st.text_input("Model", value=("gpt-4o-mini" if provider == "openai" else "llama3:8b-instruct"))
     api_key = st.text_input("OpenAI API Key (if provider=openai)", value=os.getenv("OPENAI_API_KEY", ""), type="password")
+    request_timeout = st.number_input("API timeout (sec)", min_value=10, max_value=120, value=60, step=5)
+    max_retries = st.number_input("Max retries on 429/5xx", min_value=0, max_value=10, value=3, step=1)
+    use_cache = st.checkbox("Use cached results (by content)", value=True)
+    cooldown_secs = st.number_input("Cooldown between calls (sec)", min_value=0, max_value=120, value=10, step=5)
+    max_chars = st.number_input("Max chars sent to LLM", min_value=1000, max_value=12000, value=4000, step=500)
     move_or_copy = st.radio("On approval, file by…", ["Copy", "Move"], index=0)
     st.caption("Nothing is filed without your approval. Every decision is logged.")
 
@@ -342,9 +404,18 @@ st.write(f"Found **{len(files)}** file(s) in `{input_dir}`.")
 
 colA, colB = st.columns([2, 3])
 with colA:
-    file_selected = st.selectbox("Pick a file", files, format_func=lambda p: p.relative_to(input_dir))
+    if files:
+        file_selected = st.selectbox(
+            "Pick a file",
+            files,
+            format_func=lambda p: str(p.relative_to(input_dir)),
+        )
+    else:
+        file_selected = None
+        st.info("Drop some files into the input folder to begin (supported: .pdf .docx .xlsx .csv .txt .eml).")
 
 with colB:
+    text, attachments = ("", [])
     if file_selected:
         text, attachments = extract_text(file_selected)
         st.markdown(f"**Preview: {file_selected.name}**")
@@ -355,13 +426,93 @@ with colB:
                 st.write(f"- {att['filename']} → {att['temp_path']}")
 
 # Classification controls
+# ---------------------
+# Batch queue (LLM propose only, no filing)
+# ---------------------
+st.subheader("Batch queue (propose only)")
+if 'batch_queue' not in st.session_state:
+    st.session_state['batch_queue'] = []
+if 'batch_results' not in st.session_state:
+    st.session_state['batch_results'] = {}
+
+batch_select = st.multiselect(
+    "Select files to add to queue",
+    files,
+    format_func=lambda p: str(p.relative_to(input_dir)),
+)
+if st.button("Add to queue"):
+    for p in batch_select:
+        if p not in st.session_state['batch_queue']:
+            st.session_state['batch_queue'].append(p)
+
+if st.session_state['batch_queue']:
+    st.write("**Current queue:**")
+    for p in st.session_state['batch_queue']:
+        st.write(f"- {p.relative_to(input_dir)}")
+    run_batch = st.button("Run queue (propose only)")
+    if run_batch:
+        progress = st.progress(0)
+        total = len(st.session_state['batch_queue'])
+        for i, fpath in enumerate(list(st.session_state['batch_queue'])):
+            try:
+                text_i, _ = extract_text(fpath)
+                key_i = build_cache_key(text_i or "", taxonomy, model)
+                cached_i = cache_read(key_i) if use_cache else None
+                if cached_i:
+                    res = cached_i
+                else:
+                    res = prov.classify(text_i or "", taxonomy, max_chars=int(max_chars))
+                    if use_cache and res and not res.get('error'):
+                        cache_write(key_i, res)
+                st.session_state['batch_results'][str(fpath)] = res
+            except Exception as e:
+                st.session_state['batch_results'][str(fpath)] = {"error": str(e)}
+            progress.progress(int(((i + 1) / total) * 100))
+            if i < total - 1 and cooldown_secs:
+                time.sleep(float(cooldown_secs))
+        st.success("Batch complete. Open each file above to review and approve (nothing has been filed).")
+        # Optional summary table
+        summary_rows = []
+        for f, res in st.session_state['batch_results'].items():
+            if res and not res.get('error'):
+                qs_ids = ",".join([q.get('id','') for q in res.get('quality_statements', [])])
+                cats = ",".join(res.get('evidence_categories', []))
+                summary_rows.append({"file": str(Path(f).name), "qs": qs_ids, "categories": cats})
+            else:
+                err = res.get('error','') if isinstance(res, dict) else '(error)'
+                summary_rows.append({"file": str(Path(f).name), "qs": "(error)", "categories": err})
+        if summary_rows:
+            st.dataframe(pd.DataFrame(summary_rows))
+
 st.subheader("Proposed classification (by LLM)")
-prov = LLMProvider(provider=provider, model=model, api_key=api_key)
+prov = LLMProvider(provider=provider, model=model, api_key=api_key, timeout=int(request_timeout), max_retries=int(max_retries))
+
+# Cooldown + cache aware run
+if 'next_ok_at' not in st.session_state:
+    st.session_state['next_ok_at'] = 0.0
 
 if st.button("Run LLM on this file"):
-    with st.spinner("Asking the model…"):
-        result = prov.classify(text or "", taxonomy)
-    st.session_state["llm_result"] = result
+    if not file_selected:
+        st.warning("Pick a file first.")
+    else:
+        # Try cache first
+        key = build_cache_key(text or "", taxonomy, model)
+        cached = cache_read(key) if use_cache else None
+        if cached:
+            st.info("Loaded cached classification for this content.")
+            st.session_state["llm_result"] = cached
+        else:
+            now = time.time()
+            if now < st.session_state['next_ok_at']:
+                wait = int(st.session_state['next_ok_at'] - now)
+                st.warning(f"Cooling down. Try again in {wait}s to avoid rate limits.")
+            else:
+                st.session_state['next_ok_at'] = now + float(cooldown_secs)
+                with st.spinner("Asking the model…"):
+                    result = prov.classify(text or "", taxonomy, max_chars=int(max_chars))
+                st.session_state["llm_result"] = result
+                if use_cache and result and not result.get('error'):
+                    cache_write(key, result)
 
 result = st.session_state.get("llm_result")
 
@@ -373,28 +524,29 @@ if result:
     else:
         # Render suggested QS
         sugg_qs = result.get("quality_statements", [])
-        sugg_ids = [q.get("id") for q in sugg_qs if q.get("id")]
         st.markdown("**Model’s suggested Quality Statements:**")
         for q in sugg_qs:
             qid = q.get("id")
-            meta = qs_map.get(qid, {})
+            domain = q.get("domain") or qs_map.get(qid, {}).get("domain", "?")
+            title = q.get("title") or qs_map.get(qid, {}).get("title", "")
             st.write(
-                f"- **{qid}** ({meta.get('domain', q.get('domain','?'))}) – {meta.get('title', q.get('title',''))}"
+                f"- **{qid}** ({domain}) – {title}"
                 f"  | confidence: {q.get('confidence','?')}\n\n  rationale: {q.get('rationale','')}"
             )
         # Editable selection
+        default_ids = [q.get("id") for q in sugg_qs if q.get("id") in qs_map]
         selected_qs = st.multiselect(
             "Confirm Quality Statements",
             options=qs_id_list,
-            default=[qid for qid in sugg_qs if qid in qs_map],
+            default=default_ids,
             format_func=lambda qid: f"[{qs_map[qid]['domain']}] {qid} – {qs_map[qid]['title']}" if qid in qs_map else qid,
         )
 
-        sugg_cats = result.get("evidence_categories", [])
+        sugg_cats = [c for c in result.get("evidence_categories", []) if c in cat_options]
         selected_cats = st.multiselect(
             "Confirm Evidence Categories (multi-select)",
             options=cat_options,
-            default=[c for c in sugg_cats if c in cat_options] or cat_options[:1],
+            default=sugg_cats or cat_options[:1],
         )
 
         st.markdown("**Proposed storage paths:**")
@@ -439,17 +591,21 @@ if result:
                 st.warning("Please tick the sign‑off checkbox before approving.")
             else:
                 # File into all proposed paths
-                for rel in paths:
-                    dest = output_dir / rel
-                    dest.mkdir(parents=True, exist_ok=True)
+                first_dest_file = None
+                original_path = file_selected
+                for idx, rel in enumerate(paths):
+                    dest_dir = output_dir / rel
+                    dest_dir.mkdir(parents=True, exist_ok=True)
+                    dest_file = dest_dir / file_selected.name
                     if move_or_copy == "Copy":
-                        shutil.copy2(file_selected, dest / file_selected.name)
-                    else:
-                        # move once to the first path, copy to the rest
-                        if rel == paths[0]:
-                            shutil.move(str(file_selected), str(dest / file_selected.name))
+                        shutil.copy2(original_path, dest_file)
+                    else:  # Move
+                        if idx == 0:
+                            shutil.move(str(original_path), str(dest_file))
+                            first_dest_file = dest_file
                         else:
-                            shutil.copy2(dest / file_selected.name, dest / file_selected.name)
+                            # subsequent paths: copy from the first destination
+                            shutil.copy2(first_dest_file, dest_file)
                 write_decision_log({
                     "timestamp": dt.datetime.utcnow().isoformat(),
                     "file": str(file_selected),
@@ -480,8 +636,22 @@ if result:
 
 st.divider()
 st.caption(
-    "Security note: If using a cloud LLM, input text is sent to the provider’s API. "
-    "For sensitive content, consider the Ollama local model option or a private deployment. \n"
-    "Compliance tip: Keep `decisions.csv` as your audit trail showing human sign‑off for each item."
+    "If using a cloud LLM, input text is sent to the provider’s API. For sensitive content, use the Ollama local option.\n"
+    "Keep `decisions.csv` as your audit trail showing human sign‑off for each item."
 )
 
+# --------------
+# Allow `python app.py` to behave like `streamlit run app.py`
+# --------------
+if __name__ == "__main__":
+    # If we are NOT already inside a Streamlit runtime, re-invoke via the CLI.
+    try:
+        from streamlit.web import cli as stcli
+        import sys
+        # Prevent infinite recursion if already invoked by streamlit
+        if not any(x.endswith("streamlit") for x in sys.argv[:1]):
+            sys.argv = ["streamlit", "run", os.path.abspath(__file__)]
+            raise SystemExit(stcli.main())
+    except Exception:
+        # Fallback: print helpful message
+        print("\nRun this app with:  streamlit run app.py\n")

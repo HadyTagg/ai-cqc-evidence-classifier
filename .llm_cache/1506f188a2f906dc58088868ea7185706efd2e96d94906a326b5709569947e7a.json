@@ -1,0 +1,29 @@
+{
+  "quality_statements": [
+    {
+      "id": "E09",
+      "title": "Assessing needs",
+      "domain": "Effective",
+      "confidence": 0.9,
+      "rationale": "The communication indicates a proactive approach to assessing the individual's health needs related to menopause, demonstrating a commitment to understanding and addressing the patient's condition."
+    },
+    {
+      "id": "E10",
+      "title": "Delivering evidence-based care and treatment",
+      "domain": "Effective",
+      "confidence": 0.85,
+      "rationale": "The request for input on possible treatments for menopausal symptoms shows an intention to provide evidence-based care tailored to the individual's needs."
+    },
+    {
+      "id": "R20",
+      "title": "Person‑centred care",
+      "domain": "Responsive",
+      "confidence": 0.8,
+      "rationale": "The email reflects a person-centred approach by seeking the individual's thoughts on treatment options and considering their quality of life."
+    }
+  ],
+  "evidence_categories": [
+    "Processes",
+    "People's experience of health and care services"
+  ]
+}
