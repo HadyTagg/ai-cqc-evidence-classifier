@@ -4,5 +4,7 @@ venv/
 env/
 ENV/
 
-# app input folder
+# app files and folders
 input/
+classified/
+decision.csv
