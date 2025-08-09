@@ -2,8 +2,6 @@ metadata:
   version: "1.0"
   last_updated: "2025-08-09"
 
-# Evidence categories used by CQC
-# (Keep names aligned with CQC wording)
 evidence_categories:
   - "People's experience of health and care services"
   - "Feedback from staff and leaders"
@@ -12,156 +10,114 @@ evidence_categories:
   - "Processes"
   - "Outcomes"
 
-# Quality statements (34), grouped by domain.
-# IDs are canonical keys used for foldering and prompts.
 quality_statements:
-  # SAFE (8)
   - id: S01
     domain: Safe
     title: Learning culture
-    we_statement: "We maintain an open, proactive safety culture; concerns are investigated and learning is embedded."
   - id: S02
     domain: Safe
     title: Safe systems, pathways and transitions
-    we_statement: "We work with people and partners to keep systems of care safe and ensure continuity, including at transitions."
   - id: S03
     domain: Safe
     title: Safeguarding
-    we_statement: "We protect people from abuse, neglect, bullying, harassment and discrimination, sharing concerns promptly and appropriately."
   - id: S04
     domain: Safe
     title: Involving people to manage risks
-    we_statement: "We involve people holistically in understanding and managing risks in ways that are safe and enabling."
   - id: S05
     domain: Safe
     title: Safe environments
-    we_statement: "We detect and control environmental risks; equipment, facilities and technology support the delivery of safe care."
   - id: S06
     domain: Safe
     title: Safe and effective staffing
-    we_statement: "We deploy enough skilled, competent staff with effective support, supervision and development to deliver safe care."
   - id: S07
     domain: Safe
     title: Infection prevention and control
-    we_statement: "We assess, prevent and control infection risk and escalate or share concerns promptly."
   - id: S08
     domain: Safe
     title: Medicines optimisation
-    we_statement: "We ensure medicines and treatments are safe and meet people’s needs, capacities and preferences, including when changes occur."
 
-  # EFFECTIVE (6)
   - id: E09
     domain: Effective
     title: Assessing needs
-    we_statement: "We assess and review health, care, wellbeing and communication needs with people to maximise effectiveness."
   - id: E10
     domain: Effective
     title: Delivering evidence-based care and treatment
-    we_statement: "We plan and deliver care and treatment with people, aligned to legislation and current evidence-based guidance."
   - id: E11
     domain: Effective
     title: How staff and teams work together
-    we_statement: "We work effectively across teams and services and share assessments so people don’t need to repeat their story."
   - id: E12
     domain: Effective
     title: Supporting people to live healthier lives
-    we_statement: "We support people to manage health and wellbeing, maximise independence and, where possible, reduce future care needs."
   - id: E13
     domain: Effective
     title: Monitoring and improving outcomes
-    we_statement: "We routinely monitor care and treatment to improve it and achieve positive, consistent outcomes that meet expectations."
   - id: E14
     domain: Effective
     title: Consent to care and treatment
-    we_statement: "We inform people of their rights and respect consent when delivering person‑centred care and treatment."
 
-  # CARING (5)
   - id: C15
     domain: Caring
     title: Kindness, compassion and dignity
-    we_statement: "We treat people with kindness, empathy and compassion, respecting privacy and dignity (and extend respect to partners/colleagues)."
   - id: C16
     domain: Caring
     title: Treating people as individuals
-    we_statement: "We personalise care to people’s needs, preferences, strengths and backgrounds, including protected characteristics."
   - id: C17
     domain: Caring
     title: Independence, choice and control
-    we_statement: "We promote people’s independence, rights, choice and control over their care, treatment and wellbeing."
   - id: C18
     domain: Caring
     title: Responding to people’s immediate needs
-    we_statement: "We listen, understand and respond in the moment to minimise discomfort, concern or distress."
   - id: C19
     domain: Caring
     title: Workforce wellbeing and enablement
-    we_statement: "We support staff wellbeing and enable them to deliver person‑centred care."
 
-  # RESPONSIVE (7)
   - id: R20
     domain: Responsive
-    title: Person‑centred care
-    we_statement: "We ensure people are at the centre of decisions and respond in partnership to relevant changes in their needs."
+    title: Person-centred care
   - id: R21
     domain: Responsive
     title: Care provision, integration and continuity
-    we_statement: "We understand diverse needs so care is joined‑up, flexible and supports choice and continuity across communities."
   - id: R22
     domain: Responsive
     title: Providing information
-    we_statement: "We provide accurate, up‑to‑date, accessible information tailored to individual needs."
   - id: R23
     domain: Responsive
     title: Listening to and involving people
-    we_statement: "We make it easy to share feedback or raise complaints, involve people in decisions and explain what has changed."
   - id: R24
     domain: Responsive
     title: Equity in access
-    we_statement: "We ensure everyone can access the care, support and treatment they need, when they need it."
   - id: R25
     domain: Responsive
     title: Equity in experiences and outcomes
-    we_statement: "We seek and act on insights about groups likely to face inequality, tailoring care to reduce gaps."
   - id: R26
     domain: Responsive
     title: Planning for the future
-    we_statement: "We support people to plan for important life changes, including end of life, allowing informed choices."
 
-  # WELL‑LED (8)
   - id: W27
     domain: Well-led
     title: Shared direction and culture
-    we_statement: "We have a shared vision, strategy and culture based on transparency, equity, human rights, inclusion and engagement."
   - id: W28
     domain: Well-led
     title: Capable, compassionate and inclusive leaders
-    we_statement: "We have inclusive, credible leaders at all levels who lead with integrity, openness and honesty."
   - id: W29
     domain: Well-led
     title: Freedom to speak up
-    we_statement: "We foster a culture where people feel safe to speak up and know their voice will be heard."
   - id: W30
     domain: Well-led
     title: Workforce equality, diversity and inclusion
-    we_statement: "We value diversity and work towards an inclusive, fair culture improving equality and equity for staff."
   - id: W31
     domain: Well-led
     title: Governance, management and sustainability
-    we_statement: "We have clear roles, accountability and governance; we manage risk, performance and information securely to deliver sustainable care."
   - id: W32
     domain: Well-led
     title: Partnerships and communities
-    we_statement: "We collaborate and share learning with partners so services work seamlessly for people and communities."
   - id: W33
     domain: Well-led
     title: Learning, improvement and innovation
-    we_statement: "We focus on continuous learning and innovation, contributing to safe, effective practice and research."
   - id: W34
     domain: Well-led
     title: Environmental sustainability and sustainable development
-    we_statement: "We understand and reduce our environmental impact and support people to do the same."
 
-# Folder path templates used for proposed storage locations
 path_templates:
   Safe: "Safe/{qs_title}/{category}"
   Effective: "Effective/{qs_title}/{category}"
