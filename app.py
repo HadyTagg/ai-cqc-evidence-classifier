@@ -1,4 +1,3 @@
-
 import os
 import io
 import csv
@@ -84,7 +83,7 @@ def extract_text_from_txt(path: Path) -> str:
 def extract_text_from_docx(path: Path) -> str:
     try:
         d = docx.Document(str(path))
-        return "\\n".join(p.text for p in d.paragraphs)
+        return "\n".join(p.text for p in d.paragraphs)
     except Exception as e:
         return f"[DOCX extraction error: {e}]"
 
@@ -100,9 +99,9 @@ def extract_text_from_xlsx(path: Path) -> str:
         dfs = pd.read_excel(path, sheet_name=None)
         parts = []
         for name, df in dfs.items():
-            parts.append(f"\\n--- Sheet: {name} ---\\n")
+            parts.append(f"\n--- Sheet: {name} ---\n")
             parts.append(df.to_csv(index=False))
-        return "\\n".join(parts)
+        return "\n".join(parts)
     except Exception as e:
         return f"[XLSX read error: {e}]"
 
@@ -140,9 +139,9 @@ def extract_text_from_excel(path: Path) -> str:
             return f"[Excel extraction error: unsupported extension {ext}]"
         parts = []
         for name, df in dfs.items():
-            parts.append(f"\\n--- Sheet: {name} ---\\n")
+            parts.append(f"\n--- Sheet: {name} ---\n")
             parts.append(df.to_csv(index=False))
-        return "\\n".join(parts)
+        return "\n".join(parts)
     except Exception as e:
         return f"[Excel read error: {e}]"
 
@@ -150,7 +149,7 @@ def html_to_text(html: str) -> str:
     soup = BeautifulSoup(html, "lxml")
     for tag in soup(["script", "style"]):
         tag.extract()
-    return soup.get_text("\\n", strip=True)
+    return soup.get_text("\n", strip=True)
 
 def extract_text_from_eml(path: Path) -> Tuple[str, List[Dict[str, Any]]]:
     """Return text content from an .eml. Attachments are ignored and not saved."""
@@ -164,7 +163,7 @@ def extract_text_from_eml(path: Path) -> Tuple[str, List[Dict[str, Any]]]:
             "Date": str(msg.get("Date", "")),
             "Subject": str(msg.get("Subject", "")),
         }
-        header_text = "\\n".join(f"{k}: {v}" for k, v in headers.items() if v)
+        header_text = "\n".join(f"{k}: {v}" for k, v in headers.items() if v)
         body_parts = []
         if msg.is_multipart():
             for part in msg.walk():
@@ -182,7 +181,7 @@ def extract_text_from_eml(path: Path) -> Tuple[str, List[Dict[str, Any]]]:
                 body_parts.append(msg.get_content())
             elif ct == "text/html":
                 body_parts.append(html_to_text(msg.get_content()))
-        full_text = header_text + "\\n\\n" + "\\n".join(body_parts).strip()
+        full_text = header_text + "\n\n" + "\n".join(body_parts).strip()
         return full_text, []
     except Exception as e:
         return f"[EML parse error: {e}]", []
@@ -200,13 +199,13 @@ def extract_text_from_msg(path: Path) -> str:
             val = getattr(m, key, None)
             if val:
                 headers.append(f"{label}: {val}")
-        header_text = "\\n".join(headers)
+        header_text = "\n".join(headers)
         body_text = getattr(m, "body", None) or ""
         if not body_text:
             html_body = getattr(m, "htmlBody", None)
             if html_body:
                 body_text = html_to_text(html_body)
-        return (header_text + "\\n\\n" + (body_text or "")).strip()
+        return (header_text + "\n\n" + (body_text or "")).strip()
     except Exception as e:
         return f"[MSG parse error: {e}]"
 
@@ -231,6 +230,20 @@ def _find_default_ttf() -> str | None:
         return str(p)
     return None
 
+def _find_monospace_ttf() -> str | None:
+    """Prefer a monospaced font for emails to keep alignment (e.g., DejaVu Sans Mono)."""
+    candidates = [
+        "/usr/share/fonts/truetype/dejavu/DejaVuSansMono.ttf",
+        "/usr/share/fonts/truetype/liberation/LiberationMono-Regular.ttf",
+        "/usr/share/fonts/truetype/noto/NotoSansMono-Regular.ttf",
+        "/usr/share/fonts/truetype/freefont/FreeMono.ttf",
+    ]
+    for c in candidates:
+        if Path(c).exists():
+            return c
+    # fallback to any default
+    return _find_default_ttf()
+
 def _load_ttf(font_path: str | None, size: int = 14):
     if ImageFont is None:
         return None
@@ -250,7 +263,7 @@ def _load_ttf(font_path: str | None, size: int = 14):
 def _wrap_text_to_width(text: str, draw, font, max_width: int, padding: int) -> list[str]:
     """Wrap text so that each line fits within max_width using the provided font."""
     lines_out: list[str] = []
-    for paragraph in text.split("\\n"):
+    for paragraph in text.split("\n"):
         if not paragraph:
             lines_out.append("")
             continue
@@ -258,7 +271,7 @@ def _wrap_text_to_width(text: str, draw, font, max_width: int, padding: int) -> 
         cur = ""
         for w in words:
             tentative = w if not cur else (cur + " " + w)
-            bbox = draw.textbbox((0,0), tentative, font=font)
+            bbox = draw.textbbox((0, 0), tentative, font=font)
             if bbox[2] - bbox[0] + padding*2 <= max_width:
                 cur = tentative
             else:
@@ -269,25 +282,48 @@ def _wrap_text_to_width(text: str, draw, font, max_width: int, padding: int) -> 
             lines_out.append(cur)
     return lines_out
 
-def text_to_image(text: str, width: int = 1200, padding: int = 20, font_path: str | None = None, font_size: int = 14) -> Image.Image:
+def _normalise_whitespace(text: str) -> str:
+    # Tabs and non-breaking spaces often break alignment when rendering
+    return (text or "").replace("\r", "").replace("\t", "    ").replace("\u00a0", " ")
+
+def text_to_image(
+    text: str,
+    width: int = 1400,
+    padding: int = 24,
+    font_path: str | None = None,
+    font_size: int = 15,
+    supersample: int = 2,
+    line_spacing: int = 4,
+) -> Image.Image:
     if Image is None or ImageDraw is None:
         raise RuntimeError("Pillow not available for text rasterization")
-    text = (text or "").replace("\\r", "")
-    font = _load_ttf(font_path, size=int(font_size))
-    tmp = Image.new("RGB", (width, 10), "white")
+    text = _normalise_whitespace(text)
+    # Supersample at higher resolution then downscale with LANCZOS to reduce "smeared" appearance
+    s = max(1, int(supersample))
+    width_ss = int(width) * s
+    padding_ss = int(padding) * s
+    font = _load_ttf(font_path, size=int(font_size) * s)
+    tmp = Image.new("RGB", (width_ss, 10), "white")
     draw = ImageDraw.Draw(tmp)
-    lines = _wrap_text_to_width(text, draw, font, width, padding)
-    ascent, descent = font.getmetrics() if hasattr(font, "getmetrics") else (14, 4)
-    line_h = ascent + descent + 4
-    height = max(200, padding * 2 + line_h * (len(lines) + 1))
-    img = Image.new("RGB", (width, height), "white")
+    lines = _wrap_text_to_width(text, draw, font, width_ss, padding_ss)
+    if hasattr(font, "getmetrics"):
+        ascent, descent = font.getmetrics()
+    else:
+        ascent, descent = (14 * s, 4 * s)
+    line_h = ascent + descent + int(line_spacing) * s
+    height_ss = max(200 * s, padding_ss * 2 + line_h * (len(lines) + 1))
+    img = Image.new("RGB", (width_ss, height_ss), "white")
     draw = ImageDraw.Draw(img)
-    y = padding
+    y = padding_ss
     for ln in lines:
-        draw.text((padding, y), ln, fill="black", font=font)
+        draw.text((padding_ss, y), ln, fill="black", font=font)
         y += line_h
-        if y > height - padding:
+        if y > height_ss - padding_ss:
             break
+    if s > 1:
+        # Pillow 9/10 compatibility for resampling enum
+        resample = getattr(getattr(Image, "Resampling", Image), "LANCZOS")
+        img = img.resize((int(width), int(height_ss / s)), resample=resample)
     return img
 
 def pil_to_data_url(img: Image.Image) -> str:
@@ -328,7 +364,18 @@ def _spreadsheet_to_pdf_with_libreoffice(path: Path, outdir: Path) -> Path | Non
 # ---------------------
 # Rasterization helpers (image preview)
 # ---------------------
-def rasterize_to_images(path: Path, dpi: int = 200, max_pages: int = 2, font_path: str | None = None, font_size: int = 14) -> List[Image.Image]:
+def rasterize_to_images(
+    path: Path,
+    dpi: int = 200,
+    max_pages: int = 2,
+    font_path: str | None = None,
+    font_size: int = 14,
+    text_image_width: int = 1400,
+    # Email-specific tuning
+    email_font_path: str | None = None,
+    email_font_size: int = 15,
+    email_supersample: int = 2,
+) -> List[Image.Image]:
     ext = path.suffix.lower()
     # Raw images
     if ext in {".png", ".jpg", ".jpeg", ".tif", ".tiff", ".bmp", ".webp", ".heic"}:
@@ -358,15 +405,32 @@ def rasterize_to_images(path: Path, dpi: int = 200, max_pages: int = 2, font_pat
         except Exception:
             pass
         txt = extract_text_from_docx(path)
-        return [text_to_image(txt, font_path=font_path, font_size=int(font_size))]
+        return [text_to_image(txt, width=int(text_image_width), font_path=font_path, font_size=int(font_size))]
     # EML/MSG/TXT -> rasterize extracted text
     if ext == ".eml":
         txt, _ = extract_text_from_eml(path)
-        return [text_to_image(txt, font_path=font_path, font_size=int(font_size))]
+        return [text_to_image(
+            txt,
+            width=int(text_image_width),
+            font_path=email_font_path or font_path,
+            font_size=int(email_font_size),
+            supersample=int(email_supersample),
+        )]
     if ext == ".msg":
-        return [text_to_image(extract_text_from_msg(path), font_path=font_path, font_size=int(font_size))]
+        return [text_to_image(
+            extract_text_from_msg(path),
+            width=int(text_image_width),
+            font_path=email_font_path or font_path,
+            font_size=int(email_font_size),
+            supersample=int(email_supersample),
+        )]
     if ext == ".txt":
-        return [text_to_image(extract_text_from_txt(path), font_path=font_path, font_size=int(font_size))]
+        return [text_to_image(
+            extract_text_from_txt(path),
+            width=int(text_image_width),
+            font_path=font_path,
+            font_size=int(font_size),
+        )]
     # SPREADSHEETS (XLSX/XLSM/XLS/CSV) -> PDF via LibreOffice, then to images
     if ext in {".xlsx", ".xlsm", ".xls", ".csv"}:
         pdf = _spreadsheet_to_pdf_with_libreoffice(path, Path(".sheet_pdf"))
@@ -380,9 +444,9 @@ def rasterize_to_images(path: Path, dpi: int = 200, max_pages: int = 2, font_pat
             txt = extract_text_from_csv(path)
         else:
             txt = extract_text_from_excel(path)
-        return [text_to_image(txt, font_path=font_path, font_size=int(font_size))]
+        return [text_to_image(txt, width=int(text_image_width), font_path=font_path, font_size=int(font_size))]
     # Unknown -> best effort
-    return [text_to_image(f"[Unsupported for rasterization: {ext}] {path}", font_path=font_path, font_size=int(font_size))]
+    return [text_to_image(f"[Unsupported for rasterization: {ext}] {path}", width=int(text_image_width), font_path=font_path, font_size=int(font_size))]
 
 # ---------------------
 # Taxonomy & Paths
@@ -513,16 +577,16 @@ class LLMProvider:
         qs_brief = build_qs_brief(taxonomy)
         cats = taxonomy.get("evidence_categories", [])
         system_prompt = (
-            "You are a compliance assistant for a CQC-regulated care service.\\n"
+            "You are a compliance assistant for a CQC-regulated care service.\n"
             "You will be given image(s) of an evidence item (scan/photo). Map it to one or more CQC Quality Statements "
-            "and to the main Evidence Category.\\n\\n"
-            "GROUNDING MATERIAL provided for each Quality Statement includes:\\n"
-            "- 'we_statement' (verbatim)\\n"
-            "- 'we_explanation' (verbatim)\\n"
-            "- 'what_this_quality_statement_means' (verbatim block) and parsed 'means_bullets'\\n"
-            "- 'i_statements'\\n"
-            "- 'subtopics'\\n"
-            "- 'source_url'\\n"
+            "and to the main Evidence Category.\n\n"
+            "GROUNDING MATERIAL provided for each Quality Statement includes:\n"
+            "- 'we_statement' (verbatim)\n"
+            "- 'we_explanation' (verbatim)\n"
+            "- 'what_this_quality_statement_means' (verbatim block) and parsed 'means_bullets'\n"
+            "- 'i_statements'\n"
+            "- 'subtopics'\n"
+            "- 'source_url'\n"
             "Use these verbatim texts to make precise mappings. Prefer precision over breadth. "
             "Justify each mapping with a short rationale referencing visible content, and select matching I-statements, "
             "subtopics, or 'means_bullets'. Return ONLY a JSON object per the schema."
@@ -658,7 +722,7 @@ def build_qs_brief(taxonomy: Dict[str, Any]) -> List[Dict[str, Any]]:
 # ---------------------
 st.set_page_config(page_title=APP_TITLE, layout="wide")
 st.title(APP_TITLE)
-st.caption("Spreadsheets are now rendered visually (LibreOffice → PDF → images) for classification.")
+st.caption("Spreadsheets are now rendered visually (LibreOffice → PDF → images) for classification. Email previews improved (mono font + supersampling).")
 
 with st.sidebar:
     st.header("Settings")
@@ -679,12 +743,19 @@ with st.sidebar:
     cooldown_secs = st.number_input("Cooldown between calls (sec)", min_value=0, max_value=120, value=10, step=5)
 
     st.markdown("**Preview settings**")
-    preview_dpi = st.number_input("Preview DPI", min_value=100, max_value=600, value=150, step=50)
+    preview_dpi = st.number_input("Preview DPI (PDF/image sources)", min_value=100, max_value=600, value=150, step=50)
     preview_max_pages = st.number_input("Max pages/images to preview/classify", min_value=1, max_value=10, value=2, step=1)
 
-    st.markdown("**Text preview font (fallback modes only)**")
+    st.markdown("**Text preview font (fallback modes)**")
     font_path = st.text_input("TTF font path (optional)", value=_find_default_ttf() or "")
     font_size = st.number_input("Font size", min_value=10, max_value=28, value=14, step=1)
+    text_image_width = st.number_input("Text image width (px)", min_value=800, max_value=2400, value=1400, step=50)
+
+    st.markdown("**Email (.eml/.msg) preview fixes**")
+    email_use_mono = st.checkbox("Use monospaced font for emails", value=True)
+    email_font_path = st.text_input("Email TTF path (optional)", value=_find_monospace_ttf() or (font_path or ""))
+    email_font_size = st.number_input("Email font size", min_value=10, max_value=28, value=15, step=1)
+    email_supersample = st.number_input("Email supersample factor (anti‑smear)", min_value=1, max_value=4, value=2, step=1)
 
     st.markdown("**LLM image controls**")
     llm_image_max_width = st.number_input("LLM image max width (px)", min_value=512, max_value=2048, value=1024, step=128)
@@ -734,7 +805,17 @@ with colB:
     images = []
     if file_selected:
         try:
-            images = rasterize_to_images(file_selected, dpi=int(preview_dpi), max_pages=int(preview_max_pages), font_path=font_path or None, font_size=int(font_size))
+            images = rasterize_to_images(
+                file_selected,
+                dpi=int(preview_dpi),
+                max_pages=int(preview_max_pages),
+                font_path=font_path or None,
+                font_size=int(font_size),
+                text_image_width=int(text_image_width),
+                email_font_path=(email_font_path if email_use_mono else (font_path or None)),
+                email_font_size=int(email_font_size),
+                email_supersample=int(email_supersample),
+            )
             st.markdown(f"**Preview (images): {file_selected.name}**")
             st.image(images, caption=[f"image {i+1}" for i in range(len(images))], use_container_width=True)
         except Exception as e:
@@ -760,7 +841,17 @@ if st.button("Run LLM on this file"):
                 if cached:
                     result = cached
                 else:
-                    imgs = images or rasterize_to_images(file_selected, dpi=int(preview_dpi), max_pages=int(preview_max_pages), font_path=font_path or None, font_size=int(font_size))
+                    imgs = images or rasterize_to_images(
+                        file_selected,
+                        dpi=int(preview_dpi),
+                        max_pages=int(preview_max_pages),
+                        font_path=font_path or None,
+                        font_size=int(font_size),
+                        text_image_width=int(text_image_width),
+                        email_font_path=(email_font_path if email_use_mono else (font_path or None)),
+                        email_font_size=int(email_font_size),
+                        email_supersample=int(email_supersample),
+                    )
                     result = prov.classify_images(imgs, taxonomy)
                     if use_cache and result and not result.get('error'):
                         llm_cache_write(key, result)
