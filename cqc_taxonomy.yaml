@@ -1,170 +1,1235 @@
 metadata:
-  version: "1.0"
-  last_updated: "2025-08-09"
-
-# Evidence categories used by CQC
-# (Keep names aligned with CQC wording)
+  version: 1.4-verbatim
+  generated_at: '2025-08-10T00:27:54Z'
+  licence: Open Government Licence v3.0 (CQC content; excludes logos)
+  source_index: https://www.cqc.org.uk/publications/review-cqcs-single-assessment-framework-and-its-implementation/appendix-1-34-quality-statements
 evidence_categories:
-  - "People's experience of health and care services"
-  - "Feedback from staff and leaders"
-  - "Feedback from partners"
-  - "Observation"
-  - "Processes"
-  - "Outcomes"
-
-# Quality statements (34), grouped by domain.
-# IDs are canonical keys used for foldering and prompts.
+- People's experience of health and care services
+- Feedback from staff and leaders
+- Feedback from partners
+- Observation
+- Processes
+- Outcomes
 quality_statements:
-  # SAFE (8)
-  - id: S01
-    domain: Safe
-    title: Learning culture
-    we_statement: "We maintain an open, proactive safety culture; concerns are investigated and learning is embedded."
-  - id: S02
-    domain: Safe
-    title: Safe systems, pathways and transitions
-    we_statement: "We work with people and partners to keep systems of care safe and ensure continuity, including at transitions."
-  - id: S03
-    domain: Safe
-    title: Safeguarding
-    we_statement: "We protect people from abuse, neglect, bullying, harassment and discrimination, sharing concerns promptly and appropriately."
-  - id: S04
-    domain: Safe
-    title: Involving people to manage risks
-    we_statement: "We involve people holistically in understanding and managing risks in ways that are safe and enabling."
-  - id: S05
-    domain: Safe
-    title: Safe environments
-    we_statement: "We detect and control environmental risks; equipment, facilities and technology support the delivery of safe care."
-  - id: S06
-    domain: Safe
-    title: Safe and effective staffing
-    we_statement: "We deploy enough skilled, competent staff with effective support, supervision and development to deliver safe care."
-  - id: S07
-    domain: Safe
-    title: Infection prevention and control
-    we_statement: "We assess, prevent and control infection risk and escalate or share concerns promptly."
-  - id: S08
-    domain: Safe
-    title: Medicines optimisation
-    we_statement: "We ensure medicines and treatments are safe and meet people’s needs, capacities and preferences, including when changes occur."
+- id: S01
+  domain: Safe
+  title: Learning culture
+  we_statement: |-
+    We expect providers, commissioners and system leaders live up to this statement: We have a proactive and positive culture of safety based on openness and honesty, in which concerns about safety are listened to, safety events are investigated and reported thoroughly, and lessons are learned to continually identify and embed good practices.
+  we_explanation: ''
+  what_this_quality_statement_means: |
+    including staff as well as people using the service. There is a culture of safety
+        and learning. This is based on openness, transparency and learning from events
+        that have either put people and staff at risk of harm, or that have caused them
+        harm.
 
-  # EFFECTIVE (6)
-  - id: E09
-    domain: Effective
-    title: Assessing needs
-    we_statement: "We assess and review health, care, wellbeing and communication needs with people to maximise effectiveness."
-  - id: E10
-    domain: Effective
-    title: Delivering evidence-based care and treatment
-    we_statement: "We plan and deliver care and treatment with people, aligned to legislation and current evidence-based guidance."
-  - id: E11
-    domain: Effective
-    title: How staff and teams work together
-    we_statement: "We work effectively across teams and services and share assessments so people don’t need to repeat their story."
-  - id: E12
-    domain: Effective
-    title: Supporting people to live healthier lives
-    we_statement: "We support people to manage health and wellbeing, maximise independence and, where possible, reduce future care needs."
-  - id: E13
-    domain: Effective
-    title: Monitoring and improving outcomes
-    we_statement: "We routinely monitor care and treatment to improve it and achieve positive, consistent outcomes that meet expectations."
-  - id: E14
-    domain: Effective
-    title: Consent to care and treatment
-    we_statement: "We inform people of their rights and respect consent when delivering person‑centred care and treatment."
+        - Risks are not overlooked or ignored. They are dealt with willingly as an opportunity
+        to put things right, learn and improve.
 
-  # CARING (5)
-  - id: C15
-    domain: Caring
-    title: Kindness, compassion and dignity
-    we_statement: "We treat people with kindness, empathy and compassion, respecting privacy and dignity (and extend respect to partners/colleagues)."
-  - id: C16
-    domain: Caring
-    title: Treating people as individuals
-    we_statement: "We personalise care to people’s needs, preferences, strengths and backgrounds, including protected characteristics."
-  - id: C17
-    domain: Caring
-    title: Independence, choice and control
-    we_statement: "We promote people’s independence, rights, choice and control over their care, treatment and wellbeing."
-  - id: C18
-    domain: Caring
-    title: Responding to people’s immediate needs
-    we_statement: "We listen, understand and respond in the moment to minimise discomfort, concern or distress."
-  - id: C19
-    domain: Caring
-    title: Workforce wellbeing and enablement
-    we_statement: "We support staff wellbeing and enable them to deliver person‑centred care."
+        - People and staff are encouraged and supported to raise concerns, they feel confident
+        that they will be treated with compassion and understanding, and won’t be blamed,
+        or treated negatively if they do so.
 
-  # RESPONSIVE (7)
-  - id: R20
-    domain: Responsive
-    title: Person‑centred care
-    we_statement: "We ensure people are at the centre of decisions and respond in partnership to relevant changes in their needs."
-  - id: R21
-    domain: Responsive
-    title: Care provision, integration and continuity
-    we_statement: "We understand diverse needs so care is joined‑up, flexible and supports choice and continuity across communities."
-  - id: R22
-    domain: Responsive
-    title: Providing information
-    we_statement: "We provide accurate, up‑to‑date, accessible information tailored to individual needs."
-  - id: R23
-    domain: Responsive
-    title: Listening to and involving people
-    we_statement: "We make it easy to share feedback or raise complaints, involve people in decisions and explain what has changed."
-  - id: R24
-    domain: Responsive
-    title: Equity in access
-    we_statement: "We ensure everyone can access the care, support and treatment they need, when they need it."
-  - id: R25
-    domain: Responsive
-    title: Equity in experiences and outcomes
-    we_statement: "We seek and act on insights about groups likely to face inequality, tailoring care to reduce gaps."
-  - id: R26
-    domain: Responsive
-    title: Planning for the future
-    we_statement: "We support people to plan for important life changes, including end of life, allowing informed choices."
+        - Raising concerns helps to proactively identify and manage risks before safety
+        events happen.
 
-  # WELL‑LED (8)
-  - id: W27
-    domain: Well-led
-    title: Shared direction and culture
-    we_statement: "We have a shared vision, strategy and culture based on transparency, equity, human rights, inclusion and engagement."
-  - id: W28
-    domain: Well-led
-    title: Capable, compassionate and inclusive leaders
-    we_statement: "We have inclusive, credible leaders at all levels who lead with integrity, openness and honesty."
-  - id: W29
-    domain: Well-led
-    title: Freedom to speak up
-    we_statement: "We foster a culture where people feel safe to speak up and know their voice will be heard."
-  - id: W30
-    domain: Well-led
-    title: Workforce equality, diversity and inclusion
-    we_statement: "We value diversity and work towards an inclusive, fair culture improving equality and equity for staff."
-  - id: W31
-    domain: Well-led
-    title: Governance, management and sustainability
-    we_statement: "We have clear roles, accountability and governance; we manage risk, performance and information securely to deliver sustainable care."
-  - id: W32
-    domain: Well-led
-    title: Partnerships and communities
-    we_statement: "We collaborate and share learning with partners so services work seamlessly for people and communities."
-  - id: W33
-    domain: Well-led
-    title: Learning, improvement and innovation
-    we_statement: "We focus on continuous learning and innovation, contributing to safe, effective practice and research."
-  - id: W34
-    domain: Well-led
-    title: Environmental sustainability and sustainable development
-    we_statement: "We understand and reduce our environmental impact and support people to do the same."
+        - Incidents and complaints are appropriately investigated and reported.
 
-# Folder path templates used for proposed storage locations
+        - Lessons are learned from safety incidents or complaints, resulting in changes
+        that improve care for others.
+  i_statements:
+  - I feel safe and am supported to understand and manage any risks.
+  - I can get information and advice about my health, care and support and how I can
+    be as well as possible - physically, mentally and emotionally.
+  subtopics:
+  - Organisational learning and actions
+  - Continuous improvement
+  - Duty of candour
+  source_url: https://www.cqc.org.uk/guidance-regulation/providers/assessment/single-assessment-framework/safe/learning-culture
+- id: S02
+  domain: Safe
+  title: Safe systems, pathways and transitions
+  we_statement: |-
+    We expect providers, commissioners and system leaders live up to this statement: We work with people and our partners to establish and maintain safe systems of care, in which safety is managed, monitored and assured. We ensure continuity of care, including when people move between different services.
+  we_explanation: ''
+  what_this_quality_statement_means: |
+    throughout people’s care journey. This happens through a collaborative, joined-up
+        approach to safety that involves them along with staff and other partners in their
+        care. This includes referrals, admissions and discharge, and where people are
+        moving between services.
+
+        - There is a strong awareness of the risks to people across their care journeys.
+        The approach to identifying and managing these risks is proactive and effective.
+        The effectiveness of these processes is monitored and managed to keep people safe.
+
+        - Care and support is planned and organised with people, together with partners
+        and communities in ways that ensure continuity.
+
+        - The views of people who use services, partners and staff are listened to and
+        taken into account.
+
+        - Policies and processes about safety are aligned with other key partners who
+        are involved in people’s care journey to enable shared learning and drive improvement.
+  i_statements:
+  - I know what to do and who I can contact when I realise that things might be at
+    risk of going wrong or my health condition may be worsening.
+  - When I move between services, settings or areas, there is a plan for what happens
+    next and who will do what, and all the practical arrangements are in place.
+  subtopics:
+  - Continuity of safe care
+  - Safety during transitions (including from children to adult services)
+  - Referrals
+  - Partnership working
+  source_url: https://www.cqc.org.uk/guidance-regulation/providers/assessment/single-assessment-framework/safe/safe-systems-pathways-transitions
+- id: S03
+  domain: Safe
+  title: Safeguarding
+  we_statement: |-
+    We expect providers, commissioners and system leaders live up to this statement: We work with people to understand what being safe means to them as well as with our partners on the best way to achieve this. We concentrate on improving people’s lives while protecting their right to live in safety, free from bullying, harassment, abuse, discrimination, avoidable harm and neglect. We make sure we share concerns quickly and appropriately.
+  we_explanation: ''
+  what_this_quality_statement_means: |
+    and how to take appropriate action.
+
+        - People are supported to understand safeguarding, what being safe means to them,
+        and how to raise concerns when they don’t feel safe, or they have concerns about
+        the safety of other people.
+
+        - There are effective systems, processes and practices to make sure people are
+        protected from abuse and neglect.
+
+        - There is a commitment to taking immediate action to keep people safe from abuse
+        and neglect. This includes working with partners in a collaborative way.
+
+        - People are appropriately supported when they feel unsafe or experience abuse
+        or neglect.
+
+        - Where applicable, there is a clear understanding of the Deprivation of Liberty
+        Safeguards (DoLS) and this is only used when it is in the best interest of the
+        person.
+
+        - Safeguarding systems, processes and practices mean that people’s human rights
+        are upheld and they are protected from discrimination.
+
+        - People are supported to understand their rights, including their human rights,
+        rights under the Mental Capacity Act 2005 and their rights under the Equality
+        Act 2010.
+  i_statements:
+  - I feel safe and am supported to understand and manage any risks.
+  subtopics:
+  - Safeguarding requirements (including children/young people)
+  - Mental Capacity
+  - People’s human rights
+  - Deprivation of Liberty Safeguards (DoLS) (Liberty Protection Safeguards)
+  - Closed cultures
+  - Harassment and abuse (and in the community)
+  - Sexual safety and empowerment
+  source_url: https://www.cqc.org.uk/guidance-regulation/providers/assessment/single-assessment-framework/safe/safeguarding
+- id: S04
+  domain: Safe
+  title: Involving people to manage risks
+  we_statement: |-
+    We expect providers, commissioners and system leaders live up to this statement: We work with people to understand and manage risks by thinking holistically so that care meets their needs in a way that is safe and supportive and enables them to do the things that matter to them.
+  we_explanation: ''
+  what_this_quality_statement_means: |
+    to keep themselves safe.
+
+        - Risks are assessed, and people and staff understand them.
+
+        - There is a balanced and proportionate approach to risk that supports people
+        and respects the choices they make about their care.
+
+        - Risk assessments about care are person-centred, proportionate, and regularly
+        reviewed with the person, where possible.
+
+        - When people communicate their needs, emotions or distress, staff can manage
+        this in a positive way that protects their rights and dignity and maximises learning
+        for the future about the causes of their distress.
+
+        - Restraint is only ever used as a last resort. If staff use restraint, it is
+        lawful, for a legitimate purpose, safe and necessary, and staff always follow
+        best practice. Where relevant, equality and human rights legislation is considered.
+        The service always takes a proportionate approach to imposing restrictions on
+        people. People’s care plans reflect any foreseeable risks that may need restrictions.
+  i_statements:
+  - I feel safe and am supported to understand and manage any risks.
+  - I know what to do and who I can contact when I realise that things might be at
+    risk of going wrong or my health condition may be worsening.
+  - If my treatment, including medication, has to change, I know why and am involved
+    in the decision.
+  - When I move between services, settings or areas, there is a plan for what happens
+    next and who will do what, and all the practical arrangements are in place.
+  - I have considerate support delivered by competent people.
+  - I can get information and advice about my health, care and support and how I can
+    be as well as possible – physically, mentally and emotionally.
+  subtopics:
+  - Behaviour that communicates
+  - Restrictive practice
+  - Clinical risk
+  - Managing risk/emergencies
+  source_url: https://www.cqc.org.uk/guidance-regulation/providers/assessment/single-assessment-framework/safe/involving-people-manage-risk
+- id: S05
+  domain: Safe
+  title: Safe environments
+  we_statement: |-
+    We expect providers, commissioners and system leaders live up to this statement: We detect and control potential risks in the care environment. We make sure that the equipment, facilities and technology support the delivery of safe care.
+  we_explanation: ''
+  what_this_quality_statement_means: |
+    that are designed to meet their needs.
+
+        - Facilities, equipment and technology are well-maintained and consistently support
+        staff to deliver safe and effective care.
+
+        - There are effective arrangements to monitor the safety and upkeep of the premises.
+
+        - Equipment used to deliver care and treatment is suitable for the intended purpose,
+        stored securely and used properly.
+
+        - Leaders and staff consider how environments can keep people safe from psychological
+        harm as well as physical harm, for example in relation to sexual safety and in
+        relation to sensory needs.
+  i_statements:
+  - I feel safe and am supported to understand and manage any risks.
+  subtopics:
+  - Premises (including gas, electrical and fire safety)
+  - Equipment
+  - Environmental risks (adverse weather such as heatwaves and flooding)
+  - Digital systems/technology assurance
+  source_url: https://www.cqc.org.uk/guidance-regulation/providers/assessment/single-assessment-framework/safe/safe-environments
+- id: S06
+  domain: Safe
+  title: Safe and effective staffing
+  we_statement: |-
+    We expect providers, commissioners and system leaders live up to this statement: We make sure there are enough qualified, skilled and experienced people, who receive effective support, supervision and development. They work together effectively to provide safe care that meets people’s individual needs.
+  we_explanation: ''
+  what_this_quality_statement_means: |
+    to make sure that all staff, including agency staff and volunteers, are suitably
+        experienced, competent and able to carry out their role.
+
+        - Recruitment, disciplinary and capability processes are fair and are reviewed
+        to ensure there is no disadvantage based on any specific protected equality characteristic.
+
+        - There are appropriate staffing levels and skill mix to make sure people receive
+        consistently safe, good quality care that meets their needs.
+
+        - Staff receive training appropriate and relevant to their role.
+
+        - Staff receive the support they need to deliver safe care. This includes supervision,
+        appraisal and support to develop, improve services and where needed, professional
+        revalidation.
+
+        - Staff at all levels have opportunities to learn, and poor performance is managed
+        appropriately.
+  i_statements:
+  - I feel safe and am supported to understand and manage any risks.
+  - I know what to do and who I can contact when I realise that things might be at
+    risk of going wrong or my health condition may be worsening.
+  - If my treatment, including medication, has to change, I know why and am involved
+    in the decision.
+  - I have considerate support delivered by competent people.
+  - I can get information and advice about my health, care and support and how I can
+    be as well as possible – physically, mentally and emotionally.
+  subtopics:
+  - Safe recruitment (including DBS)
+  - Staffing levels and skills mix
+  - Skills and qualifications/revalidation
+  - Learning, development and competency
+  - Support, supervision
+  - Performance management
+  - Volunteers and unpaid carers
+  source_url: https://www.cqc.org.uk/guidance-regulation/providers/assessment/single-assessment-framework/safe/safe-effective-staffing
+- id: S07
+  domain: Safe
+  title: Infection prevention and control
+  we_statement: |-
+    We expect providers, commissioners and system leaders live up to this statement: We assess and manage the risk of infection. We detect and control the risk of it spreading and share any concerns with appropriate agencies promptly.
+  we_explanation: ''
+  what_this_quality_statement_means: |
+    and managing the risk of infection, which is in line with current relevant national
+        guidance.
+
+        - People are protected as much as possible from the risk of infection because
+        premises and equipment are kept clean and hygienic.
+
+        - There are clear roles and responsibilities around infection prevention and control.
+
+        - Information about the risk of infection is shared appropriately with relevant
+        partners, including agencies, people using the service and visitors.
+  i_statements:
+  - I feel safe and am supported to understand and manage any risks.
+  subtopics:
+  - Cleanliness and hygiene (environment and equipment)
+  - Personal hygiene (staff and people who use services)
+  - Food hygiene
+  - PPE
+  - Vaccination
+  - Infection management
+  - Outbreak management
+  - Infectious diseases
+  - Waste and clinical specimen management
+  source_url: https://www.cqc.org.uk/guidance-regulation/providers/assessment/single-assessment-framework/safe/infection-prevention-control
+- id: S08
+  domain: Safe
+  title: Medicines optimisation
+  we_statement: |-
+    We expect providers, commissioners and system leaders live up to this statement: We make sure that medicines and treatments are safe and meet people’s needs, capacities and preferences by enabling them to be involved in planning, including when changes happen.
+  we_explanation: ''
+  what_this_quality_statement_means: |
+    about their medicines.
+
+        - People are involved with assessments and reviews about the level of support
+        they need to manage their medicines safely and to make sure their preferences
+        are included. This is clearly documented in their care plan.
+
+        - The approach to medicines reflects current and relevant best practice and professional
+        guidance.
+
+        - People’s medicines are appropriately prescribed, supplied and administered in
+        line with the relevant legislation, current national guidance or best available
+        evidence, and in line with the Mental Capacity Act 2005.
+
+        - Accurate, up-to-date information about people’s medicines is available, particularly
+        when they move between health and care settings, in line with current national
+        guidance, when transferring between locations or changing levels of care.
+
+        - People’s behaviour is not inappropriately controlled by medicines.
+
+        - There are appropriate arrangements for the safe management, use and oversight
+        of controlled drugs.
+  i_statements:
+  - I feel safe and am supported to understand and manage any risks.
+  - I know what to do and who I can contact when I realise that things might be at
+    risk of going wrong or my health condition may be worsening.
+  - If my treatment, including medication, has to change, I know why and am involved
+    in the decision.
+  - I have considerate support delivered by competent people.
+  subtopics:
+  - IV medicines /fluids/medical gasses
+  - Medicines management
+  - Roles and responsibilities, delegation
+  - Prescribing
+  - Self-medication
+  - Consent/decisions/covert administration (including MCA)
+  - Controlled drugs
+  - Storage and disposal
+  - Antimicrobial stewardship
+  - STOMP/STAMP
+  source_url: https://www.cqc.org.uk/guidance-regulation/providers/assessment/single-assessment-framework/safe/medicines-optimisation
+- id: E09
+  domain: Effective
+  title: Assessing needs
+  we_statement: |-
+    We expect providers, commissioners and system leaders live up to this statement: We maximise the effectiveness of people’s care and treatment by assessing and reviewing their health, care, wellbeing and communication needs with them.
+  we_explanation: ''
+  what_this_quality_statement_means: |
+    needs, and support is provided where needed to maximise their involvement.
+
+        - People are confident that their individual needs have been appropriately assessed
+        and are fully understood.
+
+        - People’s communication needs are assessed and met to maximise the effectiveness
+        of their care and treatment.
+
+        - People’s needs are assessed using a range of assessment tools to ensure their
+        needs are reflected and understood.
+
+        - Assessments consider the person’s health, care, wellbeing, and communication
+        needs, to enable them to receive care or treatment that has the best possible
+        outcomes.
+
+        - Assessments are up-to-date and staff understand people’s current needs.
+
+        - People’s care needs are routinely reviewed.
+
+        - The needs of carers of people using services are also assessed and met. This
+        supports their health and wellbeing in their carer roles and helps them to provide
+        safe and effective care to the people they support.
+  i_statements:
+  - I can get information and advice about my health, care and support and how I can
+    be as well as possible – physically, mentally and emotionally.
+  - I have care and support that is co-ordinated, and everyone works well together
+    and with me.
+  - I have care and support that enables me to live as I want to, seeing me as a unique
+    person with skills, strengths and goals.
+  subtopics:
+  - Assessing people’s needs (including accessibility and communication needs)
+  - Person-centred approach
+  - Carer assessments/support
+  - Care planning
+  - Clinical assessment tools
+  source_url: https://www.cqc.org.uk/guidance-regulation/providers/assessment/single-assessment-framework/effective/assessing-needs
+- id: E10
+  domain: Effective
+  title: Delivering evidence-based care and treatment
+  we_statement: |-
+    We expect providers, commissioners and system leaders live up to this statement: We plan and deliver people’s care and treatment with them, including what is important and matters to them. We do this in line with legislation and current evidence-based good practice and standards.
+  we_explanation: ''
+  what_this_quality_statement_means: |
+    that is evidence-based and in line with good practice standards.
+
+        - The provider’s systems ensure that staff are up-to-date with national legislation,
+        evidence-based good practice and required standards.
+
+        - People are told about current good practice that is relevant to their care and
+        are involved in how this is reflected in their care plan.
+
+        - People’s nutrition and hydration needs are met in line with current guidance.
+
+        - Staff and leaders are encouraged to learn about new and innovative approaches
+        that evidence shows can improve the way their service delivers care.
+  i_statements:
+  - I can get information and advice about my health, care and support and how I can
+    be as well as possible – physically, mentally and emotionally.
+  - I have care and support that is co-ordinated, and everyone works well together
+    and with me.
+  - I have care and support that enables me to live as I want to, seeing me as a unique
+    person with skills, strengths and goals.
+  subtopics:
+  - Best practice guidance and standards
+  - Nutrition and hydration
+  - GIRFT (Getting it right first time recommendations)
+  - Clinical reviews/medical committees
+  source_url: https://www.cqc.org.uk/guidance-regulation/providers/assessment/single-assessment-framework/effective/delivering-evidence-based-care
+- id: E11
+  domain: Effective
+  title: How staff and teams work together
+  we_statement: |-
+    We expect providers, commissioners and system leaders live up to this statement: We work effectively across teams and services to support people. We make sure they only need to tell their story once by sharing their assessment of needs when they move between different services.
+  we_explanation: ''
+  what_this_quality_statement_means: |
+    need to appropriately assess, plan and deliver people’s care, treatment and support.
+
+        - Plans for transition, referral and discharge consider people’s individual needs,
+        circumstances, ongoing care arrangements and expected outcomes.
+
+        - When people are due to move between services, all necessary staff, teams and
+        services are involved in assessing their needs to maintain continuity of care.
+
+        - Information is shared between teams and services to ensure continuity of care,
+        for example when clinical tasks are delegated or when people are referred between
+        services.
+
+        - When people receive care from a range of different staff, teams or services,
+        it is co-ordinated effectively. All relevant staff, teams and services are involved
+        in assessing, planning and delivering people's care and treatment and staff work
+        collaboratively to understand and meet people's needs.
+  i_statements:
+  - I can get information and advice about my health, care and support and how I can
+    be as well as possible – physically, mentally and emotionally.
+  - I have care and support that is co-ordinated, and everyone works well together
+    and with me.
+  subtopics:
+  - Transitions of care (including from children to adult services)
+  - Co-ordination and collaboration
+  - Delegation (for example, delegation of clinical tasks)
+  - Sharing information
+  source_url: https://www.cqc.org.uk/guidance-regulation/providers/assessment/single-assessment-framework/effective/staff-teams-work-together
+- id: E12
+  domain: Effective
+  title: Supporting people to live healthier lives
+  we_statement: |-
+    We expect providers, commissioners and system leaders live up to this statement: We support people to manage their health and wellbeing so they can maximise their independence, choice and control. We support them to live healthier lives and where possible, reduce their future needs for care and support.
+  we_explanation: ''
+  what_this_quality_statement_means: |
+    their own health, care and wellbeing needs by staff who understand their needs
+        and preferences.
+
+        - People are involved in regularly reviewing their health and wellbeing needs
+        where appropriate and necessary.
+
+        - People are encouraged and supported to make healthier choices to help promote
+        and maintain their health and wellbeing.
+
+        - Services focus on identifying risks to people’s health and wellbeing early and
+        on how to support people to prevent deterioration.
+
+        - People are involved in regularly monitoring their health, including health assessments
+        and checks where appropriate and necessary with health and care professionals.
+  i_statements:
+  - I can get information and advice about my health, care and support and how I can
+    be as well as possible – physically, mentally and emotionally.
+  - I have care and support that is co-ordinated, and everyone works well together
+    and with me.
+  - I have care and support that enables me to live as I want to, seeing me as a unique
+    person with skills, strengths and goals.
+  subtopics:
+  - Identification and prevention
+  - Access to healthcare – GP, dentists etc
+  - Healthier lives promotion
+  - Health and wellbeing deterioration
+  - Physical activity
+  - CETRs (Care, Education and Treatment Reviews)
+  source_url: https://www.cqc.org.uk/guidance-regulation/providers/assessment/single-assessment-framework/effective/supporting-people-healthier-lives
+- id: E13
+  domain: Effective
+  title: Monitoring and improving outcomes
+  we_statement: |-
+    We expect providers, commissioners and system leaders live up to this statement: We routinely monitor people’s care and treatment to continuously improve it. We ensure that outcomes are positive and consistent, and that they meet both clinical expectations and the expectations of people themselves.
+  we_explanation: ''
+  what_this_quality_statement_means: |
+    positive outcomes. These meet agreed expectations as set out in legislation, standards
+        and evidence-based clinical guidance.
+
+        - There are effective approaches to monitor people’s care and treatment and their
+        outcomes.
+
+        - This means that continuous improvements are made to people’s care and treatment.
+  i_statements:
+  - I have care and support that is co-ordinated, and everyone works well together
+    and with me.
+  - I have care and support that enables me to live as I want to, seeing me as a unique
+    person with skills, strengths and goals.
+  subtopics:
+  - Clinical outcomes
+  - Benchmarking
+  - Service accreditation schemes
+  - Quality of life outcomes
+  source_url: https://www.cqc.org.uk/guidance-regulation/providers/assessment/single-assessment-framework/effective/monitoring-improving-outcomes
+- id: E14
+  domain: Effective
+  title: Consent to care and treatment
+  we_statement: |-
+    We expect providers, commissioners and system leaders live up to this statement: We tell people about their rights around consent and respect these when we deliver person-centred care and treatment.
+  we_explanation: ''
+  what_this_quality_statement_means: |
+    to the care and treatment they are offered.
+
+        - People’s views and wishes are taken into account when their care is planned.
+
+        - There are systems and practices to ensure that people understand the care and
+        treatment being offered or recommended. This helps them make an informed decision.
+
+        - People receive information about care and treatment in a way they can understand
+        and have appropriate support and time to make decisions.
+
+        - Staff understand the importance of ensuring that people fully understand what
+        they are consenting to and the importance of obtaining consent before they deliver
+        care or treatment.
+
+        - Where necessary, people with legal authority or responsibility can make decisions
+        within the requirements of the Mental Capacity Act 2005.This includes the duty
+        to consult others such as carers, families and/or advocates, where appropriate.
+
+        - People's capacity and ability to consent is taken into account, and they, or
+        a person lawfully acting on their behalf, are involved in planning, managing and
+        reviewing their care and treatment.
+  i_statements:
+  - I have care and support that is co-ordinated, and everyone works well together
+    and with me.
+  subtopics:
+  - Consent
+  - Advocacy and support
+  - DNACPR (Do Not Attempt Cardiopulmonary Resuscitation)
+  source_url: https://www.cqc.org.uk/guidance-regulation/providers/assessment/single-assessment-framework/effective/consent-care-treatment
+- id: C15
+  domain: Caring
+  title: Kindness, compassion and dignity
+  we_statement: ''
+  we_explanation: ''
+  what_this_quality_statement_means: |
+    compassion and dignity in their day-to-day care and support.
+
+        - People feel that staff listen to them and communicate with them appropriately,
+        in a way they can understand.
+
+        - People feel that staff know and understand them, including their preferences,
+        wishes, personal histories, backgrounds and potential.
+
+        - People believe that staff will respond to their needs quickly and efficiently,
+        especially if they are in pain, discomfort, or distress.
+
+        - People’s privacy and dignity is respected and upheld at all times.
+
+        - People are assured that information about them is treated confidentially and
+        they know that staff respect their privacy.
+
+        - There is a culture of kindness and respect between colleagues from other organisations.
+
+        - Young adults feel they have control over their own privacy and the amount of
+        parental involvement in managing their care and support.
+  i_statements:
+  - I am treated with respect and dignity.
+  subtopics:
+  - Respect and dignity
+  - Privacy and confidentiality
+  - Emotional wellbeing
+  - Caring and compassion
+  source_url: https://www.cqc.org.uk/guidance-regulation/providers/assessment/single-assessment-framework/caring/kindness-compassion-dignity
+- id: C16
+  domain: Caring
+  title: Treating people as individuals
+  we_statement: ''
+  we_explanation: ''
+  what_this_quality_statement_means: |
+    are understood and these are reflected in their care, treatment and support.
+
+        - People’s personal, cultural, social and religious needs are understood and met.
+
+        - Staff treat people as individuals, considering any relevant protected equality
+        characteristics.
+
+        - People’s communication needs are met to enable them to engage in their care,
+        treatment and support to maximise their experience and outcomes.
+  i_statements:
+  - I am treated with respect and dignity.
+  - I have care and support that enables me to live as I want to, seeing me as a unique
+    person with skills, strengths and personal goals.
+  - I am supported to manage my health in a way that makes sense to me.
+  - I am in control of planning my care and support. If I need help with this, people
+    who know and care about me are involved.
+  - I can keep in touch and meet up with people who are important to me, including
+    family, friends and people who share my interests, identity and culture.
+  subtopics:
+  - Personal, cultural, social and religious needs
+  - Supporting communication and choice
+  source_url: https://www.cqc.org.uk/guidance-regulation/providers/assessment/single-assessment-framework/caring/treating-people-individuals
+- id: C17
+  domain: Caring
+  title: Independence, choice and control
+  we_statement: |-
+    We expect providers, commissioners and system leaders live up to this statement: We promote people’s independence, so they know their rights and have choice and control over their own care, treatment and wellbeing.
+  we_explanation: ''
+  what_this_quality_statement_means: |
+    over their own care and to make decisions about their care, treatment and wellbeing.
+
+        - People are supported to understand their rights by using different ways to communicate.
+        Their understanding is reviewed throughout their care and treatment.
+
+        - People are supported to maintain relationships and networks that are important
+        to them.
+
+        - People have access to their friends and family while they are using a service.
+
+        - People have access to activities and the local community to promote and support
+        their independence, health and wellbeing.
+
+        - There is a range of appropriate equipment to support and maximise people’s independence
+        and outcomes from care and treatment.
+  i_statements:
+  - I am treated with respect and dignity.
+  - I have care and support that enables me to live as I want to, seeing me as a unique
+    person with skills, strengths and personal goals.
+  - I am supported to manage my health in a way that makes sense to me.
+  - I am in control of planning my care and support. If I need help with this, people
+    who know and care about me are involved.
+  - I can keep in touch and meet up with people who are important to me, including
+    family, friends and people who share my interests, identity and culture.
+  subtopics:
+  - Access to friends and family (visiting rights)
+  - Supporting relationships and networks
+  - Access to community/activities
+  - Specialist/adaptive equipment
+  - Choice and decisions
+  - Sexual safety and empowerment
+  - Supporting independence
+  - Activities and wellbeing
+  source_url: https://www.cqc.org.uk/guidance-regulation/providers/assessment/single-assessment-framework/caring/independence-choice-control
+- id: C18
+  domain: Caring
+  title: Responding to people’s immediate needs
+  we_statement: |-
+    We expect providers, commissioners and system leaders live up to this statement: We listen to and understand people’s needs, views and wishes. We respond to these in that moment and will act to minimise any discomfort, concern or distress.
+  we_explanation: ''
+  what_this_quality_statement_means: |
+    are a priority and staff quickly anticipate these to avoid any preventable discomfort,
+        concern or distress.
+
+        - Staff are alert to people’s needs and take time to observe, communicate and
+        engage people in discussions about their immediate needs. They find out how to
+        respond in the most appropriate way to respect their wishes.
+
+        - Staff can quickly recognise when people need urgent help or support and use
+        appropriate tools and technology to assist.
+  i_statements:
+  - I am treated with respect and dignity
+  - I am supported to manage my health in a way that makes sense to me.
+  subtopics:
+  - Communication
+  - Anticipating need
+  - Responding quickly
+  source_url: https://www.cqc.org.uk/guidance-regulation/providers/assessment/single-assessment-framework/caring/responding-immediate-needs
+- id: C19
+  domain: Caring
+  title: Workforce wellbeing and enablement
+  we_statement: |-
+    We expect providers, commissioners and system leaders live up to this statement: We care about and promote the wellbeing of our staff, and we support and enable them to always deliver person centred care.
+  we_explanation: ''
+  what_this_quality_statement_means: |
+    care as the provider recognises and meets the wellbeing needs of staff. These
+        include the necessary resource and facilities for safe working, such as regular
+        breaks and rest areas.
+
+        - People benefit from staff who have regular opportunities to provide feedback,
+        raise concerns and suggest ways to improve the service or staff experiences. If
+        necessary, leaders provide a timely and considered response.
+
+        - People’s experience of a service is driven by a culture that normalises good
+        wellbeing through inclusivity, active listening, and open conversations. This
+        enables staff to do their job well and to be well.
+
+        - Staff are supported if they are struggling at work. This has a positive impact
+        on the care they deliver to people.
+
+        - Staff have easy access to personalised support that recognises the diversity
+        of a workforce with proactive and reactive measures.
+
+        - People are supported by staff who feel valued by their leaders and their colleagues.
+        They have a sense of belonging and the ability to contribute to decision making.
+  i_statements:
+  - I have care and support that enables me to live as I want to, seeing me as a unique
+    person with skills, strengths and personal goals.
+  - I am in control of planning my care and support. If I need help with this, people
+    who know and care about me are involved.
+  subtopics:
+  - Support and wellbeing
+  - Unpaid carers & volunteers
+  - Lone working
+  - Caseloads/workload
+  - Staff safety (including sexual safety)
+  source_url: https://www.cqc.org.uk/guidance-regulation/providers/assessment/single-assessment-framework/caring/workforce-wellbeing-enablement
+- id: R20
+  domain: Responsive
+  title: Person-centred care
+  we_statement: |-
+    We expect providers, commissioners and system leaders live up to this statement: We make sure people are at the centre of their care and treatment choices and we decide, in partnership with them, how to respond to any relevant changes in their needs.
+  we_explanation: ''
+  what_this_quality_statement_means: |
+    mental, emotional and social needs, including those related to protected characteristics
+        under the Equality Act.
+
+        - People who use services and those close to them (including carers and dependants)
+        are regularly involved in planning and making shared decisions about their care
+        and treatment, so it is centred around them and their needs.
+
+        - People understand their condition, care and treatment options (including any
+        associated risks and benefits) and any advice provided.
+
+        - People can receive the most appropriate care and treatment for them as the service
+        makes reasonable adjustments where necessary.
+  i_statements:
+  - I have care and support that is co-ordinated, and everyone works well together
+    and with me.
+  - I am in control of planning my care and support. If I need help with this, people
+    who know and care about me are involved.
+  - I am supported to plan ahead for important changes in my life that I can anticipate.
+  - I know how to access my health and care records and decide which personal information
+    can be shared with other people, including my family, care staff, school or college.
+  subtopics:
+  - Care planning
+  - Needs and preferences
+  - Empowerment and decision making
+  source_url: https://www.cqc.org.uk/guidance-regulation/providers/assessment/single-assessment-framework/responsive/person-centred-care
+- id: R21
+  domain: Responsive
+  title: Care provision, integration and continuity
+  we_statement: |-
+    We expect providers, commissioners and system leaders live up to this statement: We understand the diverse health and care needs of people and our local communities, so care is joined-up, flexible and supports choice and continuity.
+  we_explanation: ''
+  what_this_quality_statement_means: |
+    that understand the diverse health and social care needs of their local communities.
+
+        - There is continuity in people’s care and treatment because services are flexible
+        and joined-up.
+
+        - People’s care and treatment is delivered in a way that meets their assessed
+        needs from services that are co-ordinated and responsive.
+
+        - Delivering and co-ordinating services considers the needs and preferences of
+        different people, including those with protected characteristics under the Equality
+        Act and those at most risk of a poorer experience of care.
+  i_statements:
+  - I have care and support that is co-ordinated, and everyone works well together
+    and with me.
+  - I am in control of planning my care and support. If I need help with this, people
+    who know and care about me are involved.
+  subtopics:
+  - Availability and provision of services
+  - Eligibility/funding
+  - Continuity of care, support and treatment
+  source_url: https://www.cqc.org.uk/guidance-regulation/providers/assessment/single-assessment-framework/responsive/care-provision-integration-continuity
+- id: R22
+  domain: Responsive
+  title: Providing information
+  we_statement: |-
+    We expect providers, commissioners and system leaders live up to this statement: We provide appropriate, accurate and up-to-date information in formats that we tailor to individual needs.
+  we_explanation: ''
+  what_this_quality_statement_means: |
+    is accurate, up-to-date and provided in a way that they can understand and which
+        meets their communication needs.
+
+        - People who use the service, their family, friends, and carers are provided with
+        information that it is accessible, safe and secure and supports their rights and
+        choices.
+
+        - People’s individual needs to have information in an accessible way are identified,
+        recorded, highlighted and shared. These needs are met and reviewed to support
+        their care and treatment in line with the Accessible Information Standard.
+
+        - People can expect information to be tailored to individual needs. This includes
+        making reasonable adjustments for disabled people, interpreting and translation
+        for people who don’t speak English as a first language and for d/Deaf people who
+        use British Sign Language. People who have difficulty with reading, writing or
+        using digital services are supported with accessible information.
+
+        - People know how to access their health and care records and decide which personal
+        information can be shared with other people, including their family, care staff,
+        school or college.
+
+        - Information about people that is collected and shared meets data protection
+        legislation requirements.
+
+        - People are provided with clear and transparent information that follows consumer
+        rights best practice, including contracts and charges.
+
+        - People receive information in a timely way that meets best practice standards,
+        legal requirements and is tailored to individual need.
+  i_statements:
+  - I can get information and advice that is accurate, up to date and provided in
+    a way that I can understand.
+  - I am encouraged and enabled to feedback about my care in ways that work for me
+    and I know how it was acted on.
+  - I know how to access my health and care records and decide which personal information
+    can be shared with other people, including my family, care staff, school or college.
+  subtopics:
+  - Accessible information standard
+  - Accessibility, transparency and communication
+  - GDPR (General Data Protection Regulation)
+  - Consumer rights (including communication of fees)
+  - Translation and interpretation
+  source_url: https://www.cqc.org.uk/guidance-regulation/providers/assessment/single-assessment-framework/responsive/providing-information
+- id: R23
+  domain: Responsive
+  title: Listening to and involving people
+  we_statement: |-
+    We expect providers, commissioners and system leaders live up to this statement: We make it easy for people to share feedback and ideas or raise complaints about their care, treatment and support. We involve them in decisions about their care and tell them what’s changed as a result.
+  we_explanation: ''
+  what_this_quality_statement_means: |
+    experiences of care and support including how to raise any concerns or issues
+        and can do so in a range of accessible ways.
+
+        - People, their family, friends and other carers feel confident that if they complain,
+        they will be taken seriously and treated compassionately.
+
+        - People feel that their complaint or concern will be explored thoroughly and
+        they will receive a response in good time because complaints are dealt with in
+        an open and transparent way, with no repercussions.
+
+        - People are kept informed about how their feedback was acted on. Where improvements
+        are required as a result, people have the opportunity to be involved in shaping
+        the solutions and measuring the impact.
+
+        - Learning from complaints and concerns is seen as an opportunity for improvement
+        and staff can give examples of how they incorporated learning into daily practice.
+  i_statements:
+  - I have care and support that is co-ordinated, and everyone works well together
+    and with me.
+  - I am in control of planning my care and support. If I need help with this, people
+    who know and care about me are involved.
+  - I am encouraged and enabled to feedback about my care in ways that work for me
+    and I know how it was acted on.
+  subtopics:
+  - Involvement and coproduction
+  - Feedback and complaints
+  - Advocacy and support
+  - Carer support
+  source_url: https://www.cqc.org.uk/guidance-regulation/providers/assessment/single-assessment-framework/responsive/listening-involving-people
+- id: R24
+  domain: Responsive
+  title: Equity in access
+  we_statement: |-
+    We expect providers, commissioners and system leaders live up to this statement: We make sure that everyone can access the care, support and treatment they need when they need it.
+  we_explanation: ''
+  what_this_quality_statement_means: |
+    when they need to and in a way that works for them, which promotes equality, removes
+        barriers or delays and protects their rights.
+
+        - People can expect their care, treatment and support to be accessible, timely
+        and in line with best practice, quality standards and legal requirements, including
+        those on equality and human rights. This includes making reasonable adjustments
+        for disabled people, addressing communication barriers and having accessible premises.
+
+        - People can access services when they need to, without physical or digital barriers,
+        including out of normal hours and in an emergency. Physical premises and equipment
+        are accessible. People are given support to overcome barriers to ensure equal
+        access.
+
+        - Leaders and staff are alert to discrimination and inequality that could disadvantage
+        different groups of people in accessing care, treatment and support, whether this
+        is from wider society, within organisational processes and culture or from individuals.
+
+        - Providers use people’s feedback and other evidence to actively seek to improve
+        access for people more likely to experience barriers or delays in accessing their
+        care.
+
+        - Services are designed to make them accessible and timely for people who are
+        most likely to have difficulty accessing care. When there are barriers, they are
+        removed.
+
+        - When services change, equity of access is considered.
+
+        - People have equal access to care, treatment and support because the provider
+        complies with legal equality and human rights requirements, including avoiding
+        discrimination, considering the needs of people with different protected characteristics
+        and making reasonable adjustments.
+
+        - The provider prioritises, allocates resources and opportunities as needed to
+        tackle inequalities and achieve equity of access.
+  i_statements:
+  - I am in control of planning my care and support. If I need help with this, people
+    who know and care about me are involved.
+  subtopics:
+  - Accessibility to services
+  - Emergency unplanned care access/out of hours arrangements
+  - Reasonable adjustments
+  - Accessible premises
+  - Waiting times/delays/cancellations
+  - Digital exclusion (communication barriers)
+  - Access to post treatment support
+  source_url: https://www.cqc.org.uk/guidance-regulation/providers/assessment/single-assessment-framework/responsive/equity-access
+- id: R25
+  domain: Responsive
+  title: Equity in experiences and outcomes
+  we_statement: |-
+    We expect providers, commissioners and system leaders live up to this statement: We actively seek out and listen to information about people who are most likely to experience inequality in experience or outcomes. We tailor the care, support and treatment in response to this.
+  we_explanation: ''
+  what_this_quality_statement_means: |
+    equality, removes barriers or delays and protects their rights.
+
+        - People feel empowered by providers and staff to give their views and understand
+        their rights, including their rights to equality and their human rights.
+
+        - People feel that their experiences of discrimination and inequality are listened
+        to and acted on to improve care.
+
+        - Leaders and staff are alert to discrimination and inequality that could disadvantage
+        different groups of people using their services, whether from wider society, organisational
+        processes and culture or from individuals. They proactively seek out ways to address
+        these barriers to improve people’s experience, act on information about people's
+        experiences and outcomes and allocate resources and opportunities to achieve equity.
+
+        - The provider complies with legal equality and human rights requirements, including
+        avoiding discrimination, having regard to the needs of people with different protected
+        characteristics and making reasonable adjustments to support equity in experience
+        and outcomes.
+  i_statements:
+  - I have care and support that is co-ordinated, and everyone works well together
+    and with me.
+  - I am in control of planning my care and support. If I need help with this, people
+    who know and care about me are involved.
+  - I am encouraged and enabled to feedback about my care in ways that work for me
+    and I know how it was acted on.
+  subtopics:
+  - Benchmark of expectations
+  - Barriers to care, support and treatment
+  - Inequalities in experience and outcomes
+  - People/communities whose voices are seldom heard
+  source_url: https://www.cqc.org.uk/guidance-regulation/providers/assessment/single-assessment-framework/responsive/equity-experiences-outcomes
+- id: R26
+  domain: Responsive
+  title: Planning for the future
+  we_statement: |-
+    We expect providers, commissioners and system leaders live up to this statement: We support people to plan for important life changes, so they can have enough time to make informed decisions about their future, including at the end of their life.
+  we_explanation: ''
+  what_this_quality_statement_means: |
+    about their care and plan their future care while they have the capacity to do
+        so.
+
+        - People who may be approaching the end of their life are identified (including
+        those with protected characteristics under the Equality Act and people whose circumstances
+        may make them vulnerable). This information is shared with other services and
+        staff.
+
+        - People’s decisions and what matters to them are delivered through personalised
+        care plans that are shared with others who may need to be informed.
+
+        - When people want to express their wishes about cardiopulmonary resuscitation,
+        they are supported to do so and are able to change their mind if they wish.
+
+        - When any treatment is changed or withdrawn, professionals communicate and manage
+        this openly and sensitively so that people have a comfortable and dignified death.
+
+        - When people’s future care preferences are for greater independence and fewer
+        care interventions that are likely to benefit them, professionals work together
+        to support them to achieve their goals.
+  i_statements:
+  - I can get information and advice that is accurate, up to date and provided in
+    a way that I can understand.
+  - I am in control of planning my care and support. If I need help with this, people
+    who know and care about me are involved.
+  - I am supported to plan ahead for important changes in my life that I can anticipate.
+  subtopics:
+  - DNACPR/ReSPECT
+  - End of life care
+  - Complex care needs
+  - Palliative care
+  - Decision making
+  source_url: https://www.cqc.org.uk/guidance-regulation/providers/assessment/single-assessment-framework/responsive/planning-future
+- id: W27
+  domain: Well-led
+  title: Shared direction and culture
+  we_statement: |-
+    We have a shared vision, strategy and culture. This is based on transparency, equity, equality and human rights, diversity and inclusion, engagement, and understanding challenges and the needs of people and our communities in order to meet these.
+  we_explanation: ''
+  what_this_quality_statement_means: |
+    strategy and that staff in all areas know, understand and support the vision,
+        values and strategic goals and how their role helps in achieving them.
+
+        - Staff and leaders ensure that the vision, values and strategy have been developed
+        through a structured planning process in collaboration with people who use the
+        service, staff and external partners.
+
+        - Staff and leaders demonstrate a positive, compassionate, listening culture that
+        promotes trust and understanding between them and people using the service and
+        is focused on learning and improvement.
+
+        - Staff at all levels have a well-developed understanding of equality, diversity
+        and human rights, and they prioritise safe, high-quality, compassionate care.
+
+        - Equality and diversity are actively promoted, and the causes of any workforce
+        inequality are identified and action is taken to address these.
+
+        - Staff and leaders ensure any risks to delivering the strategy, including relevant
+        local factors, are understood and have an action plan to address them. They monitor
+        and review progress against delivery of the strategy and relevant local plans.
+  i_statements: []
+  subtopics:
+  - Strategy and vision
+  - Organisational culture
+  - Values
+  - Addressing social impact
+  source_url: https://www.cqc.org.uk/guidance-regulation/providers/assessment/single-assessment-framework/well-led/shared-direction-culture
+- id: W28
+  domain: Well-led
+  title: Capable, compassionate and inclusive leaders
+  we_statement: |-
+    We have inclusive leaders at all levels who understand the context in which we deliver care, treatment and support and embody the culture and values of their workforce and organisation. They have the skills, knowledge, experience and credibility to lead effectively. They do so with integrity, openness and honesty.
+  we_explanation: ''
+  what_this_quality_statement_means: |
+    and integrity to ensure that the organisational vision can be delivered and risks
+        are well managed.
+
+        - Leaders at every level are visible and lead by example, modelling inclusive
+        behaviours.
+
+        - High-quality leadership is sustained through safe, effective and inclusive recruitment
+        and succession planning.
+
+        - Leaders are knowledgeable about issues and priorities for the quality of services
+        and can access appropriate support and development in their role.
+
+        - Leaders are alert to any examples of poor culture that may affect the quality
+        of people’s care and have a detrimental impact on staff. They address this quickly.
+  i_statements: []
+  subtopics:
+  - Leadership competency, support and development
+  - Safe recruitment of leaders/FPPR
+  - Compassionate and capable leaders
+  - Roles and accountability
+  - Succession planning/talent management
+  source_url: https://www.cqc.org.uk/guidance-regulation/providers/assessment/single-assessment-framework/well-led/capable-compassionate-inclusive-leaders
+- id: W29
+  domain: Well-led
+  title: Freedom to speak up
+  we_statement: |-
+    We foster a positive culture where people feel that they can speak up and that their voice will be heard.
+  we_explanation: ''
+  what_this_quality_statement_means: |
+    and transparency.
+
+        - Staff and leaders actively promote staff empowerment to drive improvement. They
+        encourage staff to raise concerns and promote the value of doing so. All staff
+        are confident that their voices will be heard.
+
+        - There is a culture of speaking up where staff actively raise concerns and those
+        who do (including external whistleblowers) are supported, without fear of detriment.
+        When concerns are raised, leaders investigate sensitively and confidentially,
+        and lessons are shared and acted on.
+
+        - When something goes wrong, people receive a sincere and timely apology and are
+        told about any actions being taken to prevent the same happening again.
+  i_statements: []
+  subtopics:
+  - Speaking up culture
+  - Freedom to speak up guardian
+  - Whistleblowing
+  - Closed cultures
+  source_url: https://www.cqc.org.uk/guidance-regulation/providers/assessment/single-assessment-framework/well-led/freedom-speak-up
+- id: W30
+  domain: Well-led
+  title: Workforce equality, diversity and inclusion
+  we_statement: |-
+    We value diversity in our workforce. We work towards an inclusive and fair culture by improving equality and equity for people who work for us.
+  we_explanation: ''
+  what_this_quality_statement_means: |
+    and improve the culture of the organisation in the context of equality, diversity
+        and inclusion.
+
+        - Leaders take action to improve where there are any disparities in the experience
+        of staff with protected equality characteristics, or those from excluded and marginalised
+        groups. Any interventions are monitored to evaluate their impact.
+
+        - Leaders take steps to remove bias from practices to ensure equality of opportunity
+        and experience for the workforce within their place of work, and throughout their
+        employment. Checking accountability includes ongoing review of policies and procedures
+        to tackle structural and institutional discrimination and bias to achieve a fair
+        culture for all.
+
+        - Leaders take action to prevent and address bullying and harassment at all levels
+        and for all staff, with a clear focus on those with protected characteristics
+        under the Equality Act and those from excluded and marginalised groups.
+
+        - Leaders make reasonable adjustments to support disabled staff to carry out their
+        roles well.
+
+        - Leaders take active steps to ensure staff and leaders are representative of
+        the population of people using the service.
+
+        - Leaders ensure there are effective and proactive ways to engage with and involve
+        staff, with a focus on hearing the voices of staff with protected equality characteristics
+        and those who are excluded or marginalised, or who may be least heard within their
+        service. Staff feel empowered and are confident that their concerns and ideas
+        result in positive change to shape services and create a more equitable and inclusive
+        organisation.
+  i_statements: []
+  subtopics:
+  - Fair and equitable treatment of staff
+  - Staff human rights
+  - Well-being of workforce
+  - Gender pay gap
+  - Workforce diversity
+  - Flexible working arrangements
+  - WRES and WDES
+  source_url: https://www.cqc.org.uk/guidance-regulation/providers/assessment/single-assessment-framework/well-led/workforce-equality-diversity-inclusion
+- id: W31
+  domain: Well-led
+  title: Governance, management and sustainability
+  we_statement: |-
+    We have clear responsibilities, roles, systems of accountability and good governance. We use these to manage and deliver good quality, sustainable care, treatment and support. We act on the best information about risk, performance and outcomes, and we share this securely with others when appropriate.
+  we_explanation: ''
+  what_this_quality_statement_means: |
+    management and accountability arrangements. Staff understand their role and responsibilities.
+        Managers can account for the actions, behaviours and performance of staff.
+
+        - The systems to manage current and future performance and risks to the quality
+        of the service take a proportionate approach to managing risk that allows new
+        and innovative ideas to be tested within the service.
+
+        - Data or notifications are consistently submitted to external organisations as
+        required.
+
+        - There are robust arrangements for the availability, integrity and confidentiality
+        of data, records and data management systems. Information is used effectively
+        to monitor and improve the quality of care.
+
+        - Leaders implement relevant or mandatory quality frameworks, recognised standards,
+        best practices or equivalents to improve equity in experience and outcomes for
+        people using services and tackle known inequalities.
+  i_statements: []
+  subtopics:
+  - Roles, responsibilities and accountability
+  - Governance, quality assurance and management
+  - Cyber security and data security and protection toolkit (DSPT)
+  - Emergency preparedness, including climate events
+  - Sustainability, including financial and workforce
+  - Data security/data protection
+  - Statutory and regulatory requirements
+  - Workforce planning
+  - External recommendations, for example safety alerts
+  - Records/digital records
+  source_url: https://www.cqc.org.uk/guidance-regulation/providers/assessment/single-assessment-framework/well-led/governance-management-sustainability
+- id: W32
+  domain: Well-led
+  title: Partnerships and communities
+  we_statement: |-
+    We understand our duty to collaborate and work in partnership, so our services work seamlessly for people. We share information and learning with partners and collaborate for improvement.
+  we_explanation: ''
+  what_this_quality_statement_means: |
+    and they collaborate with all relevant external stakeholders and agencies.
+
+        - Staff and leaders work in partnership with key organisations to support care
+        provision, service development and joined-up care.
+
+        - Staff and leaders engage with people, communities and partners to share learning
+        with each other that results in continuous improvements to the service. They use
+        these networks to identify new or innovative ideas that can lead to better outcomes
+        for people.
+  i_statements: []
+  subtopics:
+  - Sharing good practice and learning
+  - Integration health and social care
+  - Partnership working and collaboration
+  source_url: https://www.cqc.org.uk/guidance-regulation/providers/assessment/single-assessment-framework/well-led/partnerships-communities
+- id: W33
+  domain: Well-led
+  title: Learning, improvement and innovation
+  we_statement: |-
+    We focus on continuous learning, innovation and improvement across our organisation and the local system. We encourage creative ways of delivering equality of experience, outcome and quality of life for people. We actively contribute to safe, effective practice and research
+  we_explanation: ''
+  what_this_quality_statement_means: |
+    of how to make improvement happen. The approach is consistent and includes measuring
+        outcomes and impact.
+
+        - Staff and leaders ensure that people using the service, their families and carers
+        are involved in developing and evaluating improvement and innovation initiatives.
+
+        - There are processes to ensure that learning happens when things go wrong, and
+        from examples of good practice. Leaders encourage reflection and collective problem-solving.
+
+        - Staff are supported to prioritise time to develop their skills around improvement
+        and innovation. There is a clear strategy for how to develop these capabilities
+        and staff are consistently encouraged to contribute to improvement initiatives.
+
+        - Leaders encourage staff to speak up with ideas for improvement and innovation
+        and actively invest time to listen and engage. There is a strong sense of trust
+        between leadership and staff.
+
+        - The service has strong external relationships that support improvement and innovation.
+        Staff and leaders engage with external work, including research, and embed evidence-based
+        practice in the organisation.
+  i_statements: []
+  subtopics:
+  - Innovation
+  - Learning and improvement
+  - Research
+  - Learning from deaths
+  source_url: https://www.cqc.org.uk/guidance-regulation/providers/assessment/single-assessment-framework/well-led/learning-improvement-innovation
+- id: W34
+  domain: Well-led
+  title: Environmental sustainability and sustainable development
+  we_statement: |-
+    We understand any negative impact of our activities on the environment and we strive to make a positive contribution in reducing it and support people to do the same.
+  we_explanation: ''
+  what_this_quality_statement_means: |
+    change is a significant threat to the health of people who use services, their
+        staff, and the wider population.
+
+        - Staff and leaders empower their staff to understand sustainable healthcare and
+        how to reduce the environmental impact of healthcare activity.
+
+        - Staff and leaders encourage a shared goal of preventative, high quality, low
+        carbon care which has health benefits for staff and the population the providers
+        serve, for example, how a reduction in air pollution will lead to significant
+        reductions in coronary heart disease, stroke, and lung cancer, among others.
+
+        - Staff and leaders have Green Plans and take action to ensure the settings in
+        which they provide care are as low carbon as possible, ensure energy efficiency,
+        and use renewable energy sources where possible.
+
+        - Staff and leaders take active steps towards ensuring the principles of net zero
+        care are embedded in planning and delivery of care. Low carbon care is resource
+        efficient and supports care to be delivered in the right place at the right time.
+  i_statements: []
+  subtopics:
+  - Staff awareness and education
+  - Carbon reduction. For example, within travel and transport, medicines, and supply
+    chain
+  - Health promotion and prevention
+  - Estates and facilities. For example, energy saving measures, lower carbon options
+    and waste reduction including recycling
+  - Efficient service delivery with resource optimisation
+  source_url: https://www.cqc.org.uk/guidance-regulation/providers/assessment/single-assessment-framework/well-led/environmental-sustainability
 path_templates:
-  Safe: "Safe/{qs_title}/{category}"
-  Effective: "Effective/{qs_title}/{category}"
-  Caring: "Caring/{qs_title}/{category}"
-  Responsive: "Responsive/{qs_title}/{category}"
-  Well-led: "Well-led/{qs_title}/{category}"
+  Safe: Safe/{qs_title}/{category}
+  Effective: Effective/{qs_title}/{category}
+  Caring: Caring/{qs_title}/{category}
+  Responsive: Responsive/{qs_title}/{category}
+  Well-led: Well-led/{qs_title}/{category}

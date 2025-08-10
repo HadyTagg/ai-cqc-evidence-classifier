@@ -3,10 +3,8 @@ import io
 import csv
 import json
 import time
-import uuid
 import shutil
 import base64
-import zipfile
 import hashlib
 import subprocess
 from pathlib import Path
@@ -16,27 +14,22 @@ import yaml
 import pandas as pd
 import streamlit as st
 
-# Parsing libraries
+# Parsing libraries (used to turn non-visual docs into preview images)
 import chardet
 from bs4 import BeautifulSoup
 from email import policy
 from email.parser import BytesParser
 
 # Documents
-from pdfminer.high_level import extract_text as pdf_extract_text
-import docx
+import docx  # used for DOCX text fallback to image
 
-# Imaging / OCR
+# Imaging / Preview
 try:
     from PIL import Image, ImageDraw, ImageFont
 except Exception:
     Image = None
     ImageDraw = None
     ImageFont = None
-try:
-    import pytesseract
-except Exception:
-    pytesseract = None
 try:
     from pdf2image import convert_from_path
 except Exception:
@@ -46,7 +39,8 @@ try:
     if heif:
         heif.register_heif_opener()
 except Exception:
-    heif = None
+    # No explicit heif variable needed; registration is best-effort
+    pass
 
 APP_TITLE = "CQC Evidence Classifier"
 DEFAULT_DECISIONS_LOG = "decisions.csv"
@@ -56,32 +50,9 @@ SUPPORTED_EXTS = {
 }
 
 # ---------------------
-# Caches (OCR + LLM)
+# Cache (LLM only)
 # ---------------------
-OCR_CACHE_DIR = Path('.ocr_cache'); OCR_CACHE_DIR.mkdir(exist_ok=True)
 LLM_CACHE_DIR = Path('.llm_cache'); LLM_CACHE_DIR.mkdir(exist_ok=True)
-
-def _sha256(b: bytes) -> str:
-    h = hashlib.sha256(); h.update(b or b""); return h.hexdigest()
-
-def build_ocr_cache_key(file_bytes: bytes, params: Dict[str, Any]) -> str:
-    payload = {"len": len(file_bytes or b""), "sha": _sha256(file_bytes), **params}
-    return hashlib.sha256(json.dumps(payload, sort_keys=True).encode("utf-8")).hexdigest()
-
-def ocr_cache_read(key: str) -> str | None:
-    p = OCR_CACHE_DIR / f"{key}.txt"
-    if p.exists():
-        try:
-            return p.read_text(encoding="utf-8")
-        except Exception:
-            return None
-    return None
-
-def ocr_cache_write(key: str, text: str) -> None:
-    try:
-        (OCR_CACHE_DIR / f"{key}.txt").write_text(text, encoding="utf-8")
-    except Exception:
-        pass
 
 def build_llm_cache_key(text: str, taxonomy: Dict[str, Any], model: str, mode: str) -> str:
     payload = {
@@ -108,7 +79,7 @@ def llm_cache_write(key: str, data: Dict[str, Any]) -> None:
         pass
 
 # ---------------------
-# Extraction helpers (TEXT path)
+# Simple extractors (only used to render texty files into images)
 # ---------------------
 
 def read_file_bytes(path: Path) -> bytes:
@@ -125,12 +96,6 @@ def detect_encoding(b: bytes) -> str:
 def extract_text_from_txt(path: Path) -> str:
     b = read_file_bytes(path)
     return b.decode(detect_encoding(b), errors="replace")
-
-def extract_text_from_pdf(path: Path) -> str:
-    try:
-        return pdf_extract_text(str(path))
-    except Exception as e:
-        return f"[PDF extraction error: {e}]"
 
 def extract_text_from_docx(path: Path) -> str:
     try:
@@ -164,6 +129,7 @@ def html_to_text(html: str) -> str:
     return soup.get_text("\n", strip=True)
 
 def extract_text_from_eml(path: Path) -> Tuple[str, List[Dict[str, Any]]]:
+    """Return text content from an .eml. Attachments are ignored and not saved."""
     try:
         b = read_file_bytes(path)
         msg = BytesParser(policy=policy.default).parsebytes(b)
@@ -176,19 +142,12 @@ def extract_text_from_eml(path: Path) -> Tuple[str, List[Dict[str, Any]]]:
         }
         header_text = "\n".join(f"{k}: {v}" for k, v in headers.items() if v)
         body_parts = []
-        attachments = []
         if msg.is_multipart():
             for part in msg.walk():
                 cd = part.get_content_disposition()
                 ct = part.get_content_type()
                 if cd == "attachment":
-                    filename = part.get_filename() or f"attachment_{uuid.uuid4().hex}"
-                    payload = part.get_payload(decode=True) or b""
-                    tmpdir = Path(".eml_attachments"); tmpdir.mkdir(exist_ok=True)
-                    temp_path = tmpdir / filename
-                    with open(temp_path, "wb") as f:
-                        f.write(payload)
-                    attachments.append({"filename": filename, "temp_path": str(temp_path)})
+                    continue
                 elif ct == "text/plain":
                     body_parts.append(part.get_content())
                 elif ct == "text/html":
@@ -200,12 +159,12 @@ def extract_text_from_eml(path: Path) -> Tuple[str, List[Dict[str, Any]]]:
             elif ct == "text/html":
                 body_parts.append(html_to_text(msg.get_content()))
         full_text = header_text + "\n\n" + "\n".join(body_parts).strip()
-        return full_text, attachments
+        return full_text, []
     except Exception as e:
         return f"[EML parse error: {e}]", []
 
 # ---------------------
-# Rasterization helpers (IMAGE path)
+# Rasterization helpers (image preview)
 # ---------------------
 
 def text_to_image(text: str, width: int = 1200, padding: int = 20) -> Image.Image:
@@ -242,15 +201,28 @@ def pil_to_data_url(img: Image.Image) -> str:
     buf = io.BytesIO(); img.save(buf, format="PNG"); b = base64.b64encode(buf.getvalue()).decode("ascii")
     return f"data:image/png;base64,{b}"
 
+# ---- Downscaling + JPEG for LLM to reduce size ----
+def downscale_for_llm(img: Image.Image, max_w: int = 1024) -> Image.Image:
+    if Image is None:
+        raise RuntimeError("Pillow not available for image processing")
+    if img.width <= max_w:
+        return img
+    h = int(img.height * (max_w / img.width))
+    return img.resize((max_w, h))
+
+def pil_to_data_url_jpeg(img: Image.Image, quality: int = 80) -> str:
+    buf = io.BytesIO()
+    img.convert("RGB").save(buf, format="JPEG", quality=int(quality), optimize=True)
+    b = base64.b64encode(buf.getvalue()).decode("ascii")
+    return f"data:image/jpeg;base64,{b}"
+
 def rasterize_to_images(path: Path, dpi: int = 200, max_pages: int = 2) -> List[Image.Image]:
     ext = path.suffix.lower()
-    images: List[Image.Image] = []
     # Raw images
     if ext in {".png", ".jpg", ".jpeg", ".tif", ".tiff", ".bmp", ".webp", ".heic"}:
         if Image is None:
             raise RuntimeError("Pillow not available to load images")
-        images = [Image.open(path)]
-        return images
+        return [Image.open(path)]
     # PDFs
     if ext == ".pdf" and convert_from_path is not None:
         imgs = convert_from_path(str(path), dpi=int(dpi))
@@ -272,7 +244,7 @@ def rasterize_to_images(path: Path, dpi: int = 200, max_pages: int = 2) -> List[
                 return imgs
         except Exception:
             pass
-        # fallback
+        # fallback to rendering extracted text
         txt = extract_text_from_docx(path)
         return [text_to_image(txt)]
     # EML/CSV/XLSX/TXT -> rasterize extracted text
@@ -328,8 +300,43 @@ def propose_storage_paths(taxonomy: Dict[str, Any], qs_ids: List[str], categorie
             paths.append(path)
     return sorted(set(paths))
 
+# ---------- bullets parser ----------
+def parse_bullets(block: str) -> List[str]:
+    """Parse 'what_this_quality_statement_means' into a flat list of bullets."""
+    if not block:
+        return []
+    lines = [l.rstrip() for l in block.splitlines()]
+    bullets: List[str] = []
+    cur: List[str] = []
+    def flush():
+        if cur:
+            bullets.append(" ".join(" ".join(cur).split()))
+            cur.clear()
+    for l in lines:
+        stripped = l.strip()
+        if stripped.startswith("- "):
+            flush()
+            cur.append(stripped[2:])
+        elif stripped == "":
+            if cur:
+                cur.append("")
+        else:
+            cur.append(stripped)
+    flush()
+    return [b for b in bullets if b]
+
 # ---------------------
-# LLM Provider (text + vision)
+# Model normalization for Chat Completions
+# ---------------------
+def _normalize_model_for_chat(m: str) -> str:
+    # Map generic GPT-5 ids to the chat-friendly alias
+    m = (m or "").strip()
+    if m in {"gpt-5", "gpt-5-latest", "gpt-5-preview"}:
+        return "gpt-5-chat-latest"
+    return m
+
+# ---------------------
+# LLM Provider (VISION ONLY)
 # ---------------------
 class LLMProvider:
     def __init__(self, provider: str, model: str, api_key: str = "", timeout: int = 60, max_retries: int = 3):
@@ -338,57 +345,30 @@ class LLMProvider:
         self.api_key = api_key
         self.timeout = timeout
         self.max_retries = max_retries
-
-    def classify_text(self, text: str, taxonomy: Dict[str, Any], max_chars: int = 6000) -> Dict[str, Any]:
-        qs = taxonomy.get("quality_statements", [])
-        cats = taxonomy.get("evidence_categories", [])
-        qs_brief = [{"id": q.get("id"), "domain": q.get("domain"), "title": q.get("title")} for q in qs]
-        system_prompt = (
-            "You are a compliance assistant for a CQC-regulated care service. "
-            "Given an evidence item (text extracted from a document or email), propose one or more relevant CQC "
-            "Propose one or more relevant CQC Quality Statements and the the main Evidence Category that this item supports. "
-            "Return ONLY a JSON object matching the schema. Give me a detailed rationale."
-        )
-        user_payload = {
-            "schema": {
-                "type": "object",
-                "properties": {
-                    "quality_statements": {
-                        "type": "array",
-                        "items": {
-                            "type": "object",
-                            "properties": {
-                                "id": {"type": "string"},
-                                "title": {"type": "string"},
-                                "domain": {"type": "string"},
-                                "confidence": {"type": "number"},
-                                "rationale": {"type": "string"},
-                            },
-                            "required": ["id", "confidence"],
-                        },
-                    },
-                    "evidence_categories": {"type": "array", "items": {"type": "string"}},
-                    "notes": {"type": "string"},
-                },
-                "required": ["quality_statements", "evidence_categories"],
-            },
-            "quality_statements_options": qs_brief,
-            "evidence_categories_options": cats,
-            "evidence_text_first_6000_chars": (text or "")[:max_chars],
-        }
-        return self._chat_json(system_prompt, user_payload)
+        # Optional runtime knobs (set from UI later)
+        self.llm_image_max_width = 1024
+        self.auto_fallback = True
+        self.fallback_model = "gpt-5-mini"
 
     def classify_images(self, images: List[Image.Image], taxonomy: Dict[str, Any], max_images: int = 4) -> Dict[str, Any]:
-        qs = taxonomy.get("quality_statements", [])
+        qs_brief = build_qs_brief(taxonomy)
         cats = taxonomy.get("evidence_categories", [])
-        qs_brief = [{"id": q.get("id"), "domain": q.get("domain"), "title": q.get("title")} for q in qs]
         system_prompt = (
-            "You are a compliance assistant for a CQC-regulated care service. "
-            "You will be given one or more images of an evidence item (a scanned document, email, report, or photo). "
-            "Propose one or more relevant CQC Quality Statements and the main Evidence Category that this item supports. "
-            "Return ONLY a JSON object per the schema. Give me a detailed rationale."
+            "You are a compliance assistant for a CQC-regulated care service.\n"
+            "You will be given image(s) of an evidence item (scan/photo). Map it to one or more CQC Quality Statements "
+            "and to the main Evidence Category.\n\n"
+            "GROUNDING MATERIAL provided for each Quality Statement includes:\n"
+            "- 'we_statement' (verbatim)\n"
+            "- 'we_explanation' (verbatim)\n"
+            "- 'what_this_quality_statement_means' (verbatim block) and parsed 'means_bullets'\n"
+            "- 'i_statements'\n"
+            "- 'subtopics'\n"
+            "- 'source_url'\n"
+            "Use these verbatim texts to make precise mappings. Prefer precision over breadth. "
+            "Justify each mapping with a short rationale referencing visible content, and select matching I-statements, "
+            "subtopics, or 'means_bullets'. Return ONLY a JSON object per the schema."
         )
-        content = [{"type": "text", "text": json.dumps({
+        schema_and_options = {
             "schema": {
                 "type": "object",
                 "properties": {
@@ -402,6 +382,9 @@ class LLMProvider:
                                 "domain": {"type": "string"},
                                 "confidence": {"type": "number"},
                                 "rationale": {"type": "string"},
+                                "matched_i_statements": {"type": "array", "items": {"type": "string"}},
+                                "matched_subtopics": {"type": "array", "items": {"type": "string"}},
+                                "matched_means_bullets": {"type": "array", "items": {"type": "string"}},
                             },
                             "required": ["id", "confidence"],
                         },
@@ -413,9 +396,12 @@ class LLMProvider:
             },
             "quality_statements_options": qs_brief,
             "evidence_categories_options": cats,
-        })}]
+        }
+        content = [{"type": "text", "text": json.dumps(schema_and_options)}]
+        max_w = getattr(self, "llm_image_max_width", 1024)
         for img in images[:max_images]:
-            content.append({"type": "image_url", "image_url": {"url": pil_to_data_url(img)}})
+            ds = downscale_for_llm(img, max_w=max_w)
+            content.append({"type": "image_url", "image_url": {"url": pil_to_data_url_jpeg(ds)}})
         return self._chat_json(system_prompt, None, content_override=content)
 
     # --- transport ---
@@ -424,41 +410,103 @@ class LLMProvider:
             return {"error": "Vision classification currently implemented for OpenAI Chat Completions only."}
         url = "https://api.openai.com/v1/chat/completions"
         headers = {"Authorization": f"Bearer {self.api_key or os.getenv('OPENAI_API_KEY','')}", "Content-Type": "application/json"}
+
         if content_override is None:
-            messages = [
-                {"role": "system", "content": system_prompt},
-                {"role": "user", "content": json.dumps(user_payload)},
-            ]
+            messages = [{"role": "system", "content": system_prompt}, {"role": "user", "content": json.dumps(user_payload)}]
         else:
-            messages = [
-                {"role": "system", "content": system_prompt},
-                {"role": "user", "content": content_override},
-            ]
-        data = {"model": self.model or "gpt-4o-mini", "messages": messages, "temperature": 0.1, "response_format": {"type": "json_object"}}
-        import requests, random
-        attempt, last_err = 0, None
-        while attempt <= 3:
-            try:
-                resp = requests.post(url, headers=headers, json=data, timeout=90)
-                if resp.status_code == 429 or 500 <= resp.status_code < 600:
-                    import time
-                    ra = resp.headers.get("Retry-After"); wait = float(ra) if ra else min(10.0, 2 ** attempt + random.random())
-                    time.sleep(wait); attempt += 1; last_err = requests.HTTPError(f"HTTP {resp.status_code}"); continue
-                resp.raise_for_status()
-                content = resp.json()["choices"][0]["message"]["content"]
+            messages = [{"role": "system", "content": system_prompt}, {"role": "user", "content": content_override}]
+
+        import requests, random  # type: ignore
+
+        # Build model attempt list
+        models_to_try = [self.model or "gpt-5-chat-latest"]
+        if getattr(self, "auto_fallback", True):
+            fb = getattr(self, "fallback_model", None)
+            if fb and fb not in models_to_try:
+                models_to_try.append(fb)
+
+        last_err, last_retry_after, last_err_body = None, None, None
+
+        for mdl in models_to_try:
+            mdl = _normalize_model_for_chat(mdl)
+            data = {
+                "model": mdl,
+                "messages": messages,
+                "temperature": 0.1,
+                "response_format": {"type": "json_object"},
+            }
+
+            attempt = 0
+            while attempt <= int(self.max_retries):
                 try:
-                    return json.loads(content)
-                except json.JSONDecodeError:
-                    return {"error": "Model did not return valid JSON", "raw": content}
-            except Exception as e:
-                last_err = e; attempt += 1
-        return {"error": f"Request failed after retries: {last_err}"}
+                    resp = requests.post(url, headers=headers, json=data, timeout=float(self.timeout))
+                    # Handle rate limits and server errors with backoff
+                    if resp.status_code == 429 or 500 <= resp.status_code < 600:
+                        ra = resp.headers.get("Retry-After")
+                        wait = float(ra) if ra else min(20.0, 2 ** attempt + random.random())
+                        last_retry_after = wait
+                        time.sleep(wait)
+                        attempt += 1
+                        last_err = requests.HTTPError(f"HTTP {resp.status_code}")  # type: ignore
+                        continue
+
+                    # If it's a 4xx (other than 429), capture body and break to try fallback
+                    if 400 <= resp.status_code < 500:
+                        try:
+                            last_err_body = resp.json()
+                        except Exception:
+                            last_err_body = resp.text
+                        last_err = requests.HTTPError(f"HTTP {resp.status_code}")  # type: ignore
+                        # Do not retry the same model on 4xx (likely bad params or access)
+                        break
+
+                    resp.raise_for_status()
+                    content = resp.json()["choices"][0]["message"]["content"]
+                    try:
+                        return json.loads(content)
+                    except json.JSONDecodeError:
+                        return {"error": "Model did not return valid JSON", "raw": content}
+                except Exception as e:
+                    last_err = e
+                    attempt += 1
+            # this model exhausted or returned 4xx—try the next model (fallback) if any
+
+        # If we reach here, all attempts failed
+        out = {"error": f"Request failed after retries: {last_err}"}
+        if last_err_body is not None:
+            out["raw"] = last_err_body
+        if last_retry_after is not None:
+            out["rate_limited"] = True
+            out["retry_after_seconds"] = last_retry_after
+        return out
+
+# ---------------------
+# Helper to include ALL QS context fields in options
+# ---------------------
+def build_qs_brief(taxonomy: Dict[str, Any]) -> List[Dict[str, Any]]:
+    out: List[Dict[str, Any]] = []
+    for q in taxonomy.get("quality_statements", []):
+        means_block = q.get("what_this_quality_statement_means", q.get("what this quality statement means", "")) or ""
+        out.append({
+            "id": q.get("id"),
+            "domain": q.get("domain"),
+            "title": q.get("title"),
+            "we_statement": q.get("we_statement", ""),
+            "we_explanation": q.get("we_explanation", q.get("we explanation", "")),
+            "what_this_quality_statement_means": means_block,
+            "means_bullets": parse_bullets(means_block),
+            "i_statements": q.get("i_statements", []),
+            "subtopics": q.get("subtopics", []),
+            "source_url": q.get("source_url", ""),
+        })
+    return out
 
 # ---------------------
 # UI
 # ---------------------
 st.set_page_config(page_title=APP_TITLE, layout="wide")
 st.title(APP_TITLE)
+st.caption("Vision-only mode: documents are rasterized to images and classified from the images.")
 
 with st.sidebar:
     st.header("Settings")
@@ -466,20 +514,27 @@ with st.sidebar:
     output_dir = Path(st.text_input("Output base folder (root for filing)", value=str(Path.cwd() / "classified")))
 
     taxonomy_path = st.text_input("Taxonomy file (YAML)", value=str(Path.cwd() / "cqc_taxonomy.yaml"))
-    if st.button("Reload taxonomy"): st.cache_data.clear()
+    if st.button("Reload taxonomy"):
+        st.cache_data.clear()
 
     provider = st.selectbox("LLM provider", ["openai"], index=0)
-    model = st.text_input("Model", value="gpt-4o-mini")
+    # Default to chat-safe GPT-5 alias
+    model = st.text_input("Model", value="gpt-5-chat-latest")
     api_key = st.text_input("OpenAI API Key", value=os.getenv("OPENAI_API_KEY", ""), type="password")
 
     request_timeout = st.number_input("API timeout (sec)", min_value=10, max_value=120, value=60, step=5)
     max_retries = st.number_input("Max retries on 429/5xx", min_value=0, max_value=10, value=3, step=1)
     use_cache = st.checkbox("Use cached results (by content)", value=True)
     cooldown_secs = st.number_input("Cooldown between calls (sec)", min_value=0, max_value=120, value=10, step=5)
-    st.markdown("**OCR / Rasterization**")
-    ocr_lang = st.text_input("OCR languages (Tesseract codes)", value="eng")
-    ocr_dpi = st.number_input("OCR/Rasterize DPI", min_value=100, max_value=600, value=200, step=50)
-    ocr_max_pages = st.number_input("Max pages/images to preview/classify", min_value=1, max_value=10, value=2, step=1)
+
+    st.markdown("**Preview settings**")
+    preview_dpi = st.number_input("Preview DPI", min_value=100, max_value=600, value=100, step=50)
+    preview_max_pages = st.number_input("Max pages/images to preview/classify", min_value=1, max_value=10, value=1, step=1)
+
+    st.markdown("**LLM image controls**")
+    llm_image_max_width = st.number_input("LLM image max width (px)", min_value=512, max_value=2048, value=1024, step=128)
+    auto_fallback = st.checkbox("Auto-fallback on 429/5xx", value=True)
+    fallback_model = st.text_input("Fallback model", value="gpt-5-mini")
 
     move_or_copy = st.radio("On approval, file by…", ["Copy", "Move"], index=0)
     st.caption("Nothing is filed without your approval. Every decision is logged.")
@@ -488,7 +543,8 @@ with st.sidebar:
 try:
     taxonomy = load_taxonomy(taxonomy_path)
 except Exception as e:
-    st.error(f"Failed to load taxonomy: {e}"); st.stop()
+    st.error(f"Failed to load taxonomy: {e}")
+    st.stop()
 
 qs_options = list_quality_statement_options(taxonomy)
 qs_map = {q["id"]: q for q in qs_options}
@@ -502,7 +558,17 @@ st.subheader("Files to review")
 st.write(f"Found **{len(files)}** file(s) in `{input_dir}`.")
 
 # Provider
-prov = LLMProvider(provider=provider, model=model, api_key=api_key, timeout=int(request_timeout), max_retries=int(max_retries))
+prov = LLMProvider(
+    provider=provider,
+    model=model,
+    api_key=api_key,
+    timeout=int(request_timeout),
+    max_retries=int(max_retries),
+)
+# Attach runtime knobs from UI
+prov.llm_image_max_width = int(llm_image_max_width)
+prov.auto_fallback = bool(auto_fallback)
+prov.fallback_model = (fallback_model or "").strip() or None
 
 colA, colB = st.columns([2, 3])
 with colA:
@@ -514,13 +580,13 @@ with colB:
     images = []
     if file_selected:
         try:
-            images = rasterize_to_images(file_selected, dpi=int(ocr_dpi), max_pages=int(ocr_max_pages))
+            images = rasterize_to_images(file_selected, dpi=int(preview_dpi), max_pages=int(preview_max_pages))
             st.markdown(f"**Preview (images): {file_selected.name}**")
-            st.image(images, caption=[f"image {i+1}" for i in range(len(images))], use_column_width=True)
+            st.image(images, caption=[f"image {i+1}" for i in range(len(images))], use_container_width=True)
         except Exception as e:
-            st.error(f"Rasterization error: {e}")
+            st.error(f"Preview error: {e}")
 
-# Run classification
+# Run classification (VISION ONLY)
 if 'next_ok_at' not in st.session_state:
     st.session_state['next_ok_at'] = 0.0
 
@@ -535,12 +601,13 @@ if st.button("Run LLM on this file"):
         else:
             st.session_state['next_ok_at'] = now + float(cooldown_secs)
             with st.spinner("Asking the model…"):
-                key = build_llm_cache_key("[image-mode]" + str(file_selected), taxonomy, model, "Image-only (Vision)")
+                key = build_llm_cache_key("[image-mode]" + str(file_selected), taxonomy, model, "Vision-only")
                 cached = llm_cache_read(key) if use_cache else None
                 if cached:
                     result = cached
                 else:
-                    result = prov.classify_images(images or rasterize_to_images(file_selected, dpi=int(ocr_dpi), max_pages=int(ocr_max_pages)), taxonomy)
+                    imgs = images or rasterize_to_images(file_selected, dpi=int(preview_dpi), max_pages=int(preview_max_pages))
+                    result = prov.classify_images(imgs, taxonomy)
                     if use_cache and result and not result.get('error'):
                         llm_cache_write(key, result)
             st.session_state['llm_result'] = result
@@ -548,6 +615,10 @@ if st.button("Run LLM on this file"):
 result = st.session_state.get('llm_result')
 if result:
     if result.get('error'):
+        if result.get("rate_limited"):
+            ra = result.get("retry_after_seconds")
+            if ra:
+                st.warning(f"Rate limited. Server asked to retry after ~{int(ra)}s. Consider using the fallback model or increasing the cooldown.")
         st.error(f"LLM error: {result['error']}")
         with st.expander("Raw output"):
             st.code(result.get('raw', ''))
@@ -555,31 +626,108 @@ if result:
         sugg_qs = result.get("quality_statements", [])
         st.markdown("**Model’s suggested Quality Statements:**")
         for q in sugg_qs:
-            qid = q.get("id"); dom = q.get("domain") or qs_map.get(qid, {}).get("domain", "?"); title = q.get("title") or qs_map.get(qid, {}).get("title", "")
-            st.write(f"- **{qid}** ({dom}) – {title} | confidence: {q.get('confidence','?')}  rationale: {q.get('rationale','')}")
+            qid = q.get("id")
+            dom = q.get("domain") or qs_map.get(qid, {}).get("domain", "?")
+            title = q.get("title") or qs_map.get(qid, {}).get("title", "")
+            conf = q.get("confidence", "?")
+            rationale = q.get("rationale", "")
+            st.write(f"- **{qid}** ({dom}) – {title} | confidence: {conf}")
+            if rationale:
+                st.caption(f"Rationale: {rationale}")
+
+            if qid in qs_map:
+                qs = qs_map[qid]
+                tab_labels = ["We statement", "We explanation", "What it means", "What it means (bullets)", "I statements", "Subtopics", "Source", "Matched (if any)"]
+                tabs = st.tabs(tab_labels)
+
+                with tabs[0]:
+                    st.write(qs.get("we_statement", "_(none)_") or "_(none)_")
+                with tabs[1]:
+                    st.write(qs.get("we_explanation", qs.get("we explanation", "_(none)_")) or "_(none)_")
+                with tabs[2]:
+                    st.write(qs.get("what_this_quality_statement_means", qs.get("what this quality statement means", "_(none)_")) or "_(none)_")
+                with tabs[3]:
+                    bullets = parse_bullets(qs.get("what_this_quality_statement_means", ""))
+                    if bullets:
+                        for b in bullets:
+                            st.write(f"- {b}")
+                    else:
+                        st.write("_(none)_")
+                with tabs[4]:
+                    i_list = qs.get("i_statements") or []
+                    if i_list:
+                        for s in i_list:
+                            st.write(f"- {s}")
+                    else:
+                        st.write("_(none)_")
+                with tabs[5]:
+                    subs = qs.get("subtopics") or []
+                    if subs:
+                        for s in subs:
+                            st.write(f"- {s}")
+                    else:
+                        st.write("_(none)_")
+                with tabs[6]:
+                    src = qs.get("source_url")
+                    if src:
+                        st.markdown(f"[Open the official CQC page]({src})")
+                    else:
+                        st.write("_(none)_")
+                with tabs[7]:
+                    mi = q.get("matched_i_statements") or []
+                    ms = q.get("matched_subtopics") or []
+                    mb = q.get("matched_means_bullets") or []
+                    if mi:
+                        st.write("**Matched I statements:**")
+                        for s in mi:
+                            st.write(f"- {s}")
+                    if ms:
+                        st.write("**Matched subtopics:**")
+                        for s in ms:
+                            st.write(f"- {s}")
+                    if mb:
+                        st.write("**Matched 'What it means' bullets:**")
+                        for s in mb:
+                            st.write(f"- {s}")
+                    if not mi and not ms and not mb:
+                        st.write("_(none returned by model)_")
+
         default_ids = [q.get("id") for q in sugg_qs if q.get("id") in qs_map]
-        selected_qs = st.multiselect("Confirm Quality Statements", options=qs_id_list, default=default_ids, format_func=lambda qid: f"[{qs_map[qid]['domain']}] {qid} – {qs_map[qid]['title']}" if qid in qs_map else qid)
+        selected_qs = st.multiselect(
+            "Confirm Quality Statements",
+            options=qs_id_list,
+            default=default_ids,
+            format_func=lambda qid: f"[{qs_map[qid]['domain']}] {qid} – {qs_map[qid]['title']}" if qid in qs_map else qid
+        )
+
         sugg_cats = [c for c in result.get("evidence_categories", []) if c in cat_options]
         selected_cats = st.multiselect("Confirm Evidence Categories (multi-select)", options=cat_options, default=sugg_cats or cat_options[:1])
+
         st.markdown("**Proposed storage paths:**")
         paths = propose_storage_paths(taxonomy, selected_qs, selected_cats)
         for p in paths:
             st.write(f"- {p}")
+
         notes = st.text_area("Reviewer notes (optional)", value=result.get("notes", ""))
         signed_off = st.checkbox("I confirm the above classification and approve filing.")
         reviewer = st.text_input("Your name for the audit log", value=os.getenv("USER", "Reviewer"))
         col1, col2 = st.columns([1,1])
-        with col1: approve = st.button("Approve & File")
-        with col2: reject = st.button("Reject (do not file)")
+        with col1:
+            approve = st.button("Approve & File")
+        with col2:
+            reject = st.button("Reject (do not file)")
+
         def write_decision_log(row: Dict[str, Any]):
             file_exists = Path(DEFAULT_DECISIONS_LOG).exists()
             with open(DEFAULT_DECISIONS_LOG, "a", newline="", encoding="utf-8") as f:
                 writer = csv.DictWriter(f, fieldnames=["timestamp","file","provider","model","quality_statements","evidence_categories","paths","reviewer","notes","action"])
-                if not file_exists: writer.writeheader()
+                if not file_exists:
+                    writer.writeheader()
                 writer.writerow(row)
+
         if approve:
             if not signed_off:
-                st.warning("Please tick the sign‑off checkbox before approving.")
+                st.warning("Please tick the sign-off checkbox before approving.")
             else:
                 original_path = file_selected; original_name = file_selected.name
                 first_dest_file = None
@@ -593,7 +741,8 @@ if result:
                             shutil.copy2(str(original_path), str(dest_file)); first_dest_file = dest_file
                     else:
                         src = first_dest_file if move_or_copy == "Move" else original_path
-                        if src and Path(src).exists(): shutil.copy2(str(src), str(dest_file))
+                        if src and Path(src).exists():
+                            shutil.copy2(str(src), str(dest_file))
                 write_decision_log({
                     "timestamp": pd.Timestamp.utcnow().isoformat(),
                     "file": str(original_path),

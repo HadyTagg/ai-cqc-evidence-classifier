@@ -9,7 +9,7 @@ input/
 classified/
 decisions.csv
 .llm_cache/
-.ocr_cache/
+.docx_pdf/
 
 # Vim/Neovim — swap files
 *.swp
