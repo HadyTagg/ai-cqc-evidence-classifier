@@ -17,7 +17,7 @@ import yaml
 import pandas as pd
 import streamlit as st
 
-# Silence noisy openpyxl "Data Validation extension" warning
+# Silence noisy openpyxl "Data Validation extension is not supported" warning (from openpyxl)
 warnings.filterwarnings(
     "ignore",
     r"Data Validation extension is not supported",
@@ -49,7 +49,6 @@ try:
     if heif:
         heif.register_heif_opener()
 except Exception:
-    # No explicit heif variable needed; registration is best-effort
     pass
 try:
     import extract_msg  # for .msg (Outlook) files
@@ -64,7 +63,7 @@ SUPPORTED_EXTS = {
 }
 
 # ---------------------
-# Simple extractors (only used to render texty files into images)
+# Simple extractors (only used as fallbacks)
 # ---------------------
 
 def read_file_bytes(path: Path) -> bytes:
@@ -107,7 +106,7 @@ def extract_text_from_xlsx(path: Path) -> str:
     except Exception as e:
         return f"[XLSX read error: {e}]"
 
-# -------- Excel helpers to support .xlsm/.xls ----------
+# -------- Excel helpers & conversions ----------
 def _read_excel_all_sheets(path: Path, engine: str | None = None) -> dict:
     return pd.read_excel(path, sheet_name=None, engine=engine)
 
@@ -130,10 +129,8 @@ def extract_text_from_excel(path: Path) -> str:
             dfs = _read_excel_all_sheets(path)
         elif ext == ".xls":
             try:
-                # Try xlrd engine if available (supports .xls if xlrd<2.0 is installed)
                 dfs = _read_excel_all_sheets(path, engine="xlrd")
             except Exception:
-                # Fallback: convert to .xlsx with LibreOffice then read with openpyxl
                 conv = _xls_to_xlsx_with_libreoffice(path)
                 if conv and conv.exists():
                     dfs = _read_excel_all_sheets(conv)
@@ -214,11 +211,6 @@ def extract_text_from_msg(path: Path) -> str:
         return f"[MSG parse error: {e}]"
 
 # ---------------------
-# Rasterization helpers (image preview)
-# ---------------------
-
-
-# ---------------------
 # Font handling for rasterized text
 # ---------------------
 def _find_default_ttf() -> str | None:
@@ -247,20 +239,18 @@ def _load_ttf(font_path: str | None, size: int = 14):
             return ImageFont.truetype(font_path, size=size)
     except Exception:
         pass
-    # Try to find a default
     found = _find_default_ttf()
     if found:
         try:
             return ImageFont.truetype(found, size=size)
         except Exception:
             pass
-    # Fallback to PIL's tiny bitmap font
     return ImageFont.load_default()
 
 def _wrap_text_to_width(text: str, draw, font, max_width: int, padding: int) -> list[str]:
     """Wrap text so that each line fits within max_width using the provided font."""
     lines_out: list[str] = []
-    for paragraph in text.split("\n"):
+    for paragraph in text.split("\\n"):
         if not paragraph:
             lines_out.append("")
             continue
@@ -282,46 +272,14 @@ def _wrap_text_to_width(text: str, draw, font, max_width: int, padding: int) -> 
 def text_to_image(text: str, width: int = 1200, padding: int = 20, font_path: str | None = None, font_size: int = 14) -> Image.Image:
     if Image is None or ImageDraw is None:
         raise RuntimeError("Pillow not available for text rasterization")
-    text = (text or "").replace("\r", "")
-    # Load TTF (or fallback)
+    text = (text or "").replace("\\r", "")
     font = _load_ttf(font_path, size=int(font_size))
-    # Pre-create image to measure text
     tmp = Image.new("RGB", (width, 10), "white")
     draw = ImageDraw.Draw(tmp)
     lines = _wrap_text_to_width(text, draw, font, width, padding)
-    # Estimate height
     ascent, descent = font.getmetrics() if hasattr(font, "getmetrics") else (14, 4)
     line_h = ascent + descent + 4
     height = max(200, padding * 2 + line_h * (len(lines) + 1))
-    img = Image.new("RGB", (width, height), "white")
-    draw = ImageDraw.Draw(img)
-    y = padding
-    for ln in lines:
-        draw.text((padding, y), ln, fill="black", font=font)
-        y += line_h
-        if y > height - padding:
-            break
-    return img
-
-    if Image is None or ImageDraw is None:
-        raise RuntimeError("Pillow not available for text rasterization")
-    text = (text or "").replace("\\r", "")
-    lines = []
-    for para in text.split("\\n"):
-        if not para:
-            lines.append("")
-            continue
-        wrap = 110
-        while len(para) > wrap:
-            cut = para.rfind(" ", 0, wrap)
-            if cut == -1:
-                cut = wrap
-            lines.append(para[:cut])
-            para = para[cut:].lstrip()
-        lines.append(para)
-    font = ImageFont.load_default()
-    line_h = 16
-    height = padding * 2 + max(200, line_h * (len(lines) + 1))
     img = Image.new("RGB", (width, height), "white")
     draw = ImageDraw.Draw(img)
     y = padding
@@ -351,7 +309,26 @@ def pil_to_data_url_jpeg(img: Image.Image, quality: int = 80) -> str:
     b = base64.b64encode(buf.getvalue()).decode("ascii")
     return f"data:image/jpeg;base64,{b}"
 
-def rasterize_to_images(path: Path, dpi: int = 200, max_pages: int = 2) -> List[Image.Image]:
+# ---------------------
+# Spreadsheet -> PDF (for visual classification)
+# ---------------------
+def _spreadsheet_to_pdf_with_libreoffice(path: Path, outdir: Path) -> Path | None:
+    """Convert a spreadsheet (xlsx/xlsm/xls/csv) to a PDF using LibreOffice. Returns path or None."""
+    outdir.mkdir(parents=True, exist_ok=True)
+    pdf_out = outdir / (path.stem + ".pdf")
+    try:
+        subprocess.run(
+            ["soffice", "--headless", "--convert-to", "pdf:calc_pdf_Export", "--outdir", str(outdir), str(path)],
+            check=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE
+        )
+        return pdf_out if pdf_out.exists() else None
+    except Exception:
+        return None
+
+# ---------------------
+# Rasterization helpers (image preview)
+# ---------------------
+def rasterize_to_images(path: Path, dpi: int = 200, max_pages: int = 2, font_path: str | None = None, font_size: int = 14) -> List[Image.Image]:
     ext = path.suffix.lower()
     # Raw images
     if ext in {".png", ".jpg", ".jpeg", ".tif", ".tiff", ".bmp", ".webp", ".heic"}:
@@ -380,23 +357,32 @@ def rasterize_to_images(path: Path, dpi: int = 200, max_pages: int = 2) -> List[
                 return imgs
         except Exception:
             pass
-        # fallback to rendering extracted text
         txt = extract_text_from_docx(path)
-        return [text_to_image(txt, font_path=font_path or None, font_size=int(font_size))]
-    # EML/MSG/CSV/XLS*/TXT -> rasterize extracted text
+        return [text_to_image(txt, font_path=font_path, font_size=int(font_size))]
+    # EML/MSG/TXT -> rasterize extracted text
     if ext == ".eml":
         txt, _ = extract_text_from_eml(path)
-        return [text_to_image(txt, font_path=font_path or None, font_size=int(font_size))]
+        return [text_to_image(txt, font_path=font_path, font_size=int(font_size))]
     if ext == ".msg":
-        return [text_to_image(extract_text_from_msg(path), font_path=font_path or None, font_size=int(font_size))]
+        return [text_to_image(extract_text_from_msg(path), font_path=font_path, font_size=int(font_size))]
     if ext == ".txt":
-        return [text_to_image(extract_text_from_txt(path), font_path=font_path or None, font_size=int(font_size))]
-    if ext == ".csv":
-        return [text_to_image(extract_text_from_csv(path), font_path=font_path or None, font_size=int(font_size))]
-    if ext in {".xlsx", ".xlsm", ".xls"}:
-        return [text_to_image(extract_text_from_excel(path), font_path=font_path or None, font_size=int(font_size))]
+        return [text_to_image(extract_text_from_txt(path), font_path=font_path, font_size=int(font_size))]
+    # SPREADSHEETS (XLSX/XLSM/XLS/CSV) -> PDF via LibreOffice, then to images
+    if ext in {".xlsx", ".xlsm", ".xls", ".csv"}:
+        pdf = _spreadsheet_to_pdf_with_libreoffice(path, Path(".sheet_pdf"))
+        if pdf and convert_from_path is not None:
+            imgs = convert_from_path(str(pdf), dpi=int(dpi))
+            if max_pages:
+                imgs = imgs[:max_pages]
+            return imgs
+        # Fallback to text-based rendering if PDF conversion or pdf2image is unavailable
+        if ext == ".csv":
+            txt = extract_text_from_csv(path)
+        else:
+            txt = extract_text_from_excel(path)
+        return [text_to_image(txt, font_path=font_path, font_size=int(font_size))]
     # Unknown -> best effort
-    return [text_to_image(f"[Unsupported for rasterization: {ext}] {path}")]
+    return [text_to_image(f"[Unsupported for rasterization: {ext}] {path}", font_path=font_path, font_size=int(font_size))]
 
 # ---------------------
 # Taxonomy & Paths
@@ -504,7 +490,6 @@ def llm_cache_write(key: str, data: Dict[str, Any]) -> None:
 # Model normalization for Chat Completions
 # ---------------------
 def _normalize_model_for_chat(m: str) -> str:
-    # Map generic GPT-5 ids to the chat-friendly alias
     m = (m or "").strip()
     if m in {"gpt-5", "gpt-5-latest", "gpt-5-preview"}:
         return "gpt-5-chat-latest"
@@ -520,7 +505,6 @@ class LLMProvider:
         self.api_key = api_key
         self.timeout = timeout
         self.max_retries = max_retries
-        # Optional runtime knobs (set from UI later)
         self.llm_image_max_width = 1024
         self.auto_fallback = True
         self.fallback_model = "gpt-5-mini"
@@ -579,7 +563,6 @@ class LLMProvider:
             content.append({"type": "image_url", "image_url": {"url": pil_to_data_url_jpeg(ds)}})
         return self._chat_json(system_prompt, None, content_override=content)
 
-    # --- transport ---
     def _chat_json(self, system_prompt: str, user_payload: Dict[str, Any] | None, content_override: List[Dict[str, Any]] | None = None) -> Dict[str, Any]:
         if self.provider != "openai":
             return {"error": "Vision classification currently implemented for OpenAI Chat Completions only."}
@@ -593,7 +576,6 @@ class LLMProvider:
 
         import requests, random  # type: ignore
 
-        # Build model attempt list
         models_to_try = [self.model or "gpt-5-chat-latest"]
         if getattr(self, "auto_fallback", True):
             fb = getattr(self, "fallback_model", None)
@@ -615,7 +597,6 @@ class LLMProvider:
             while attempt <= int(self.max_retries):
                 try:
                     resp = requests.post(url, headers=headers, json=data, timeout=float(self.timeout))
-                    # Handle rate limits and server errors with backoff
                     if resp.status_code == 429 or 500 <= resp.status_code < 600:
                         ra = resp.headers.get("Retry-After")
                         wait = float(ra) if ra else min(20.0, 2 ** attempt + random.random())
@@ -625,14 +606,12 @@ class LLMProvider:
                         last_err = requests.HTTPError(f"HTTP {resp.status_code}")  # type: ignore
                         continue
 
-                    # If it's a 4xx (other than 429), capture body and break to try fallback
                     if 400 <= resp.status_code < 500:
                         try:
                             last_err_body = resp.json()
                         except Exception:
                             last_err_body = resp.text
                         last_err = requests.HTTPError(f"HTTP {resp.status_code}")  # type: ignore
-                        # Do not retry the same model on 4xx (likely bad params or access)
                         break
 
                     resp.raise_for_status()
@@ -644,9 +623,7 @@ class LLMProvider:
                 except Exception as e:
                     last_err = e
                     attempt += 1
-            # this model exhausted or returned 4xx—try the next model (fallback) if any
 
-        # If we reach here, all attempts failed
         out = {"error": f"Request failed after retries: {last_err}"}
         if last_err_body is not None:
             out["raw"] = last_err_body
@@ -681,7 +658,7 @@ def build_qs_brief(taxonomy: Dict[str, Any]) -> List[Dict[str, Any]]:
 # ---------------------
 st.set_page_config(page_title=APP_TITLE, layout="wide")
 st.title(APP_TITLE)
-st.caption("Vision-only mode: documents are rasterized to images and classified from the images.")
+st.caption("Spreadsheets are now rendered visually (LibreOffice → PDF → images) for classification.")
 
 with st.sidebar:
     st.header("Settings")
@@ -693,7 +670,6 @@ with st.sidebar:
         st.cache_data.clear()
 
     provider = st.selectbox("LLM provider", ["openai"], index=0)
-    # Default to chat-safe GPT-5 alias
     model = st.text_input("Model", value="gpt-5-chat-latest")
     api_key = st.text_input("OpenAI API Key", value=os.getenv("OPENAI_API_KEY", ""), type="password")
 
@@ -703,10 +679,12 @@ with st.sidebar:
     cooldown_secs = st.number_input("Cooldown between calls (sec)", min_value=0, max_value=120, value=10, step=5)
 
     st.markdown("**Preview settings**")
+    preview_dpi = st.number_input("Preview DPI", min_value=100, max_value=600, value=150, step=50)
+    preview_max_pages = st.number_input("Max pages/images to preview/classify", min_value=1, max_value=10, value=2, step=1)
+
+    st.markdown("**Text preview font (fallback modes only)**")
     font_path = st.text_input("TTF font path (optional)", value=_find_default_ttf() or "")
-    font_size = st.number_input("Font size (for texty previews)", min_value=10, max_value=28, value=14, step=1)
-    preview_dpi = st.number_input("Preview DPI", min_value=100, max_value=600, value=100, step=50)
-    preview_max_pages = st.number_input("Max pages/images to preview/classify", min_value=1, max_value=10, value=1, step=1)
+    font_size = st.number_input("Font size", min_value=10, max_value=28, value=14, step=1)
 
     st.markdown("**LLM image controls**")
     llm_image_max_width = st.number_input("LLM image max width (px)", min_value=512, max_value=2048, value=1024, step=128)
@@ -742,7 +720,6 @@ prov = LLMProvider(
     timeout=int(request_timeout),
     max_retries=int(max_retries),
 )
-# Attach runtime knobs from UI
 prov.llm_image_max_width = int(llm_image_max_width)
 prov.auto_fallback = bool(auto_fallback)
 prov.fallback_model = (fallback_model or "").strip() or None
@@ -757,7 +734,7 @@ with colB:
     images = []
     if file_selected:
         try:
-            images = rasterize_to_images(file_selected, dpi=int(preview_dpi), max_pages=int(preview_max_pages))
+            images = rasterize_to_images(file_selected, dpi=int(preview_dpi), max_pages=int(preview_max_pages), font_path=font_path or None, font_size=int(font_size))
             st.markdown(f"**Preview (images): {file_selected.name}**")
             st.image(images, caption=[f"image {i+1}" for i in range(len(images))], use_container_width=True)
         except Exception as e:
@@ -783,7 +760,7 @@ if st.button("Run LLM on this file"):
                 if cached:
                     result = cached
                 else:
-                    imgs = images or rasterize_to_images(file_selected, dpi=int(preview_dpi), max_pages=int(preview_max_pages))
+                    imgs = images or rasterize_to_images(file_selected, dpi=int(preview_dpi), max_pages=int(preview_max_pages), font_path=font_path or None, font_size=int(font_size))
                     result = prov.classify_images(imgs, taxonomy)
                     if use_cache and result and not result.get('error'):
                         llm_cache_write(key, result)
