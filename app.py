@@ -1,3 +1,4 @@
+
 import os
 import io
 import csv
@@ -10,9 +11,18 @@ import subprocess
 from pathlib import Path
 from typing import List, Dict, Any, Tuple
 
+import warnings
+
 import yaml
 import pandas as pd
 import streamlit as st
+
+# Silence noisy openpyxl "Data Validation extension" warning
+warnings.filterwarnings(
+    "ignore",
+    r"Data Validation extension is not supported",
+    UserWarning,
+)
 
 # Parsing libraries (used to turn non-visual docs into preview images)
 import chardet
@@ -41,42 +51,17 @@ try:
 except Exception:
     # No explicit heif variable needed; registration is best-effort
     pass
+try:
+    import extract_msg  # for .msg (Outlook) files
+except Exception:
+    extract_msg = None
 
 APP_TITLE = "CQC Evidence Classifier"
 DEFAULT_DECISIONS_LOG = "decisions.csv"
 SUPPORTED_EXTS = {
-    ".txt", ".pdf", ".docx", ".csv", ".xlsx", ".eml",
+    ".txt", ".pdf", ".docx", ".csv", ".xlsx", ".xlsm", ".xls", ".eml", ".msg",
     ".png", ".jpg", ".jpeg", ".tif", ".tiff", ".bmp", ".webp", ".heic"
 }
-
-# ---------------------
-# Cache (LLM only)
-# ---------------------
-LLM_CACHE_DIR = Path('.llm_cache'); LLM_CACHE_DIR.mkdir(exist_ok=True)
-
-def build_llm_cache_key(text: str, taxonomy: Dict[str, Any], model: str, mode: str) -> str:
-    payload = {
-        "taxonomy_version": taxonomy.get("metadata", {}).get("version"),
-        "model": model,
-        "mode": mode,
-        "text_head": (text or "")[:10000],
-    }
-    return hashlib.sha256(json.dumps(payload, sort_keys=True).encode("utf-8")).hexdigest()
-
-def llm_cache_read(key: str) -> Dict[str, Any] | None:
-    p = LLM_CACHE_DIR / f"{key}.json"
-    if p.exists():
-        try:
-            return json.loads(p.read_text(encoding="utf-8"))
-        except Exception:
-            return None
-    return None
-
-def llm_cache_write(key: str, data: Dict[str, Any]) -> None:
-    try:
-        (LLM_CACHE_DIR / f"{key}.json").write_text(json.dumps(data, ensure_ascii=False, indent=2), encoding="utf-8")
-    except Exception:
-        pass
 
 # ---------------------
 # Simple extractors (only used to render texty files into images)
@@ -100,7 +85,7 @@ def extract_text_from_txt(path: Path) -> str:
 def extract_text_from_docx(path: Path) -> str:
     try:
         d = docx.Document(str(path))
-        return "\n".join(p.text for p in d.paragraphs)
+        return "\\n".join(p.text for p in d.paragraphs)
     except Exception as e:
         return f"[DOCX extraction error: {e}]"
 
@@ -116,17 +101,59 @@ def extract_text_from_xlsx(path: Path) -> str:
         dfs = pd.read_excel(path, sheet_name=None)
         parts = []
         for name, df in dfs.items():
-            parts.append(f"\n--- Sheet: {name} ---\n")
+            parts.append(f"\\n--- Sheet: {name} ---\\n")
             parts.append(df.to_csv(index=False))
-        return "\n".join(parts)
+        return "\\n".join(parts)
     except Exception as e:
         return f"[XLSX read error: {e}]"
+
+# -------- Excel helpers to support .xlsm/.xls ----------
+def _read_excel_all_sheets(path: Path, engine: str | None = None) -> dict:
+    return pd.read_excel(path, sheet_name=None, engine=engine)
+
+def _xls_to_xlsx_with_libreoffice(xls_path: Path) -> Path | None:
+    outdir = Path(".xls_convert"); outdir.mkdir(exist_ok=True)
+    xlsx_out = outdir / (xls_path.stem + ".xlsx")
+    try:
+        subprocess.run(
+            ["soffice", "--headless", "--convert-to", "xlsx", "--outdir", str(outdir), str(xls_path)],
+            check=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE
+        )
+        return xlsx_out if xlsx_out.exists() else None
+    except Exception:
+        return None
+
+def extract_text_from_excel(path: Path) -> str:
+    ext = path.suffix.lower()
+    try:
+        if ext in {".xlsx", ".xlsm"}:
+            dfs = _read_excel_all_sheets(path)
+        elif ext == ".xls":
+            try:
+                # Try xlrd engine if available (supports .xls if xlrd<2.0 is installed)
+                dfs = _read_excel_all_sheets(path, engine="xlrd")
+            except Exception:
+                # Fallback: convert to .xlsx with LibreOffice then read with openpyxl
+                conv = _xls_to_xlsx_with_libreoffice(path)
+                if conv and conv.exists():
+                    dfs = _read_excel_all_sheets(conv)
+                else:
+                    raise
+        else:
+            return f"[Excel extraction error: unsupported extension {ext}]"
+        parts = []
+        for name, df in dfs.items():
+            parts.append(f"\\n--- Sheet: {name} ---\\n")
+            parts.append(df.to_csv(index=False))
+        return "\\n".join(parts)
+    except Exception as e:
+        return f"[Excel read error: {e}]"
 
 def html_to_text(html: str) -> str:
     soup = BeautifulSoup(html, "lxml")
     for tag in soup(["script", "style"]):
         tag.extract()
-    return soup.get_text("\n", strip=True)
+    return soup.get_text("\\n", strip=True)
 
 def extract_text_from_eml(path: Path) -> Tuple[str, List[Dict[str, Any]]]:
     """Return text content from an .eml. Attachments are ignored and not saved."""
@@ -140,7 +167,7 @@ def extract_text_from_eml(path: Path) -> Tuple[str, List[Dict[str, Any]]]:
             "Date": str(msg.get("Date", "")),
             "Subject": str(msg.get("Subject", "")),
         }
-        header_text = "\n".join(f"{k}: {v}" for k, v in headers.items() if v)
+        header_text = "\\n".join(f"{k}: {v}" for k, v in headers.items() if v)
         body_parts = []
         if msg.is_multipart():
             for part in msg.walk():
@@ -158,21 +185,129 @@ def extract_text_from_eml(path: Path) -> Tuple[str, List[Dict[str, Any]]]:
                 body_parts.append(msg.get_content())
             elif ct == "text/html":
                 body_parts.append(html_to_text(msg.get_content()))
-        full_text = header_text + "\n\n" + "\n".join(body_parts).strip()
+        full_text = header_text + "\\n\\n" + "\\n".join(body_parts).strip()
         return full_text, []
     except Exception as e:
         return f"[EML parse error: {e}]", []
+
+def extract_text_from_msg(path: Path) -> str:
+    """Return text content from an Outlook .msg file (headers + body). Attachments ignored."""
+    try:
+        if extract_msg is None:
+            return "[MSG parse error: 'extract-msg' is not installed. Run: pip install extract-msg]"
+        m = extract_msg.Message(str(path))
+        headers = []
+        for key, label in (
+            ("sender", "From"), ("to", "To"), ("cc", "Cc"), ("date", "Date"), ("subject", "Subject")
+        ):
+            val = getattr(m, key, None)
+            if val:
+                headers.append(f"{label}: {val}")
+        header_text = "\\n".join(headers)
+        body_text = getattr(m, "body", None) or ""
+        if not body_text:
+            html_body = getattr(m, "htmlBody", None)
+            if html_body:
+                body_text = html_to_text(html_body)
+        return (header_text + "\\n\\n" + (body_text or "")).strip()
+    except Exception as e:
+        return f"[MSG parse error: {e}]"
 
 # ---------------------
 # Rasterization helpers (image preview)
 # ---------------------
 
-def text_to_image(text: str, width: int = 1200, padding: int = 20) -> Image.Image:
+
+# ---------------------
+# Font handling for rasterized text
+# ---------------------
+def _find_default_ttf() -> str | None:
+    """Try to locate a reasonable TrueType font on Linux (Crostini)."""
+    candidates = [
+        "/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf",
+        "/usr/share/fonts/truetype/liberation/LiberationSans-Regular.ttf",
+        "/usr/share/fonts/truetype/noto/NotoSans-Regular.ttf",
+        "/usr/share/fonts/truetype/freefont/FreeSans.ttf",
+    ]
+    for c in candidates:
+        p = Path(c)
+        if p.exists():
+            return str(p)
+    # user fonts
+    home = Path.home()
+    for p in home.glob(".local/share/fonts/**/*.ttf"):
+        return str(p)
+    return None
+
+def _load_ttf(font_path: str | None, size: int = 14):
+    if ImageFont is None:
+        return None
+    try:
+        if font_path and Path(font_path).exists():
+            return ImageFont.truetype(font_path, size=size)
+    except Exception:
+        pass
+    # Try to find a default
+    found = _find_default_ttf()
+    if found:
+        try:
+            return ImageFont.truetype(found, size=size)
+        except Exception:
+            pass
+    # Fallback to PIL's tiny bitmap font
+    return ImageFont.load_default()
+
+def _wrap_text_to_width(text: str, draw, font, max_width: int, padding: int) -> list[str]:
+    """Wrap text so that each line fits within max_width using the provided font."""
+    lines_out: list[str] = []
+    for paragraph in text.split("\n"):
+        if not paragraph:
+            lines_out.append("")
+            continue
+        words = paragraph.split(" ")
+        cur = ""
+        for w in words:
+            tentative = w if not cur else (cur + " " + w)
+            bbox = draw.textbbox((0,0), tentative, font=font)
+            if bbox[2] - bbox[0] + padding*2 <= max_width:
+                cur = tentative
+            else:
+                if cur:
+                    lines_out.append(cur)
+                cur = w
+        if cur:
+            lines_out.append(cur)
+    return lines_out
+
+def text_to_image(text: str, width: int = 1200, padding: int = 20, font_path: str | None = None, font_size: int = 14) -> Image.Image:
     if Image is None or ImageDraw is None:
         raise RuntimeError("Pillow not available for text rasterization")
     text = (text or "").replace("\r", "")
+    # Load TTF (or fallback)
+    font = _load_ttf(font_path, size=int(font_size))
+    # Pre-create image to measure text
+    tmp = Image.new("RGB", (width, 10), "white")
+    draw = ImageDraw.Draw(tmp)
+    lines = _wrap_text_to_width(text, draw, font, width, padding)
+    # Estimate height
+    ascent, descent = font.getmetrics() if hasattr(font, "getmetrics") else (14, 4)
+    line_h = ascent + descent + 4
+    height = max(200, padding * 2 + line_h * (len(lines) + 1))
+    img = Image.new("RGB", (width, height), "white")
+    draw = ImageDraw.Draw(img)
+    y = padding
+    for ln in lines:
+        draw.text((padding, y), ln, fill="black", font=font)
+        y += line_h
+        if y > height - padding:
+            break
+    return img
+
+    if Image is None or ImageDraw is None:
+        raise RuntimeError("Pillow not available for text rasterization")
+    text = (text or "").replace("\\r", "")
     lines = []
-    for para in text.split("\n"):
+    for para in text.split("\\n"):
         if not para:
             lines.append("")
             continue
@@ -234,9 +369,10 @@ def rasterize_to_images(path: Path, dpi: int = 200, max_pages: int = 2) -> List[
         outdir = Path(".docx_pdf"); outdir.mkdir(exist_ok=True)
         pdf_out = outdir / (path.stem + ".pdf")
         try:
-            subprocess.run([
-                "soffice", "--headless", "--convert-to", "pdf", "--outdir", str(outdir), str(path)
-            ], check=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+            subprocess.run(
+                ["soffice", "--headless", "--convert-to", "pdf", "--outdir", str(outdir), str(path)],
+                check=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE
+            )
             if pdf_out.exists() and convert_from_path is not None:
                 imgs = convert_from_path(str(pdf_out), dpi=int(dpi))
                 if max_pages:
@@ -246,17 +382,19 @@ def rasterize_to_images(path: Path, dpi: int = 200, max_pages: int = 2) -> List[
             pass
         # fallback to rendering extracted text
         txt = extract_text_from_docx(path)
-        return [text_to_image(txt)]
-    # EML/CSV/XLSX/TXT -> rasterize extracted text
+        return [text_to_image(txt, font_path=font_path or None, font_size=int(font_size))]
+    # EML/MSG/CSV/XLS*/TXT -> rasterize extracted text
     if ext == ".eml":
         txt, _ = extract_text_from_eml(path)
-        return [text_to_image(txt)]
+        return [text_to_image(txt, font_path=font_path or None, font_size=int(font_size))]
+    if ext == ".msg":
+        return [text_to_image(extract_text_from_msg(path), font_path=font_path or None, font_size=int(font_size))]
     if ext == ".txt":
-        return [text_to_image(extract_text_from_txt(path))]
+        return [text_to_image(extract_text_from_txt(path), font_path=font_path or None, font_size=int(font_size))]
     if ext == ".csv":
-        return [text_to_image(extract_text_from_csv(path))]
-    if ext == ".xlsx":
-        return [text_to_image(extract_text_from_xlsx(path))]
+        return [text_to_image(extract_text_from_csv(path), font_path=font_path or None, font_size=int(font_size))]
+    if ext in {".xlsx", ".xlsm", ".xls"}:
+        return [text_to_image(extract_text_from_excel(path), font_path=font_path or None, font_size=int(font_size))]
     # Unknown -> best effort
     return [text_to_image(f"[Unsupported for rasterization: {ext}] {path}")]
 
@@ -326,6 +464,43 @@ def parse_bullets(block: str) -> List[str]:
     return [b for b in bullets if b]
 
 # ---------------------
+# Simple JSON file cache for LLM results
+# ---------------------
+LLM_CACHE_DIR = Path(".llm_cache")
+LLM_CACHE_DIR.mkdir(exist_ok=True)
+
+def _taxonomy_fingerprint(taxonomy: Dict[str, Any]) -> str:
+    try:
+        return hashlib.sha256(json.dumps(taxonomy, sort_keys=True).encode("utf-8")).hexdigest()[:12]
+    except Exception:
+        return "unknown"
+
+def build_llm_cache_key(source_id: str, taxonomy: Dict[str, Any], model: str, mode: str, text: str | None = None) -> str:
+    payload = {
+        "source": source_id,
+        "taxonomy_fp": _taxonomy_fingerprint(taxonomy),
+        "model": model,
+        "mode": mode,
+        "text_head": (text or "")[:10000],
+    }
+    return hashlib.sha256(json.dumps(payload, sort_keys=True).encode("utf-8")).hexdigest()
+
+def llm_cache_read(key: str) -> Dict[str, Any] | None:
+    p = LLM_CACHE_DIR / f"{key}.json"
+    if p.exists():
+        try:
+            return json.loads(p.read_text(encoding="utf-8"))
+        except Exception:
+            return None
+    return None
+
+def llm_cache_write(key: str, data: Dict[str, Any]) -> None:
+    try:
+        (LLM_CACHE_DIR / f"{key}.json").write_text(json.dumps(data, ensure_ascii=False, indent=2), encoding="utf-8")
+    except Exception:
+        pass
+
+# ---------------------
 # Model normalization for Chat Completions
 # ---------------------
 def _normalize_model_for_chat(m: str) -> str:
@@ -354,16 +529,16 @@ class LLMProvider:
         qs_brief = build_qs_brief(taxonomy)
         cats = taxonomy.get("evidence_categories", [])
         system_prompt = (
-            "You are a compliance assistant for a CQC-regulated care service.\n"
+            "You are a compliance assistant for a CQC-regulated care service.\\n"
             "You will be given image(s) of an evidence item (scan/photo). Map it to one or more CQC Quality Statements "
-            "and to the main Evidence Category.\n\n"
-            "GROUNDING MATERIAL provided for each Quality Statement includes:\n"
-            "- 'we_statement' (verbatim)\n"
-            "- 'we_explanation' (verbatim)\n"
-            "- 'what_this_quality_statement_means' (verbatim block) and parsed 'means_bullets'\n"
-            "- 'i_statements'\n"
-            "- 'subtopics'\n"
-            "- 'source_url'\n"
+            "and to the main Evidence Category.\\n\\n"
+            "GROUNDING MATERIAL provided for each Quality Statement includes:\\n"
+            "- 'we_statement' (verbatim)\\n"
+            "- 'we_explanation' (verbatim)\\n"
+            "- 'what_this_quality_statement_means' (verbatim block) and parsed 'means_bullets'\\n"
+            "- 'i_statements'\\n"
+            "- 'subtopics'\\n"
+            "- 'source_url'\\n"
             "Use these verbatim texts to make precise mappings. Prefer precision over breadth. "
             "Justify each mapping with a short rationale referencing visible content, and select matching I-statements, "
             "subtopics, or 'means_bullets'. Return ONLY a JSON object per the schema."
@@ -528,6 +703,8 @@ with st.sidebar:
     cooldown_secs = st.number_input("Cooldown between calls (sec)", min_value=0, max_value=120, value=10, step=5)
 
     st.markdown("**Preview settings**")
+    font_path = st.text_input("TTF font path (optional)", value=_find_default_ttf() or "")
+    font_size = st.number_input("Font size (for texty previews)", min_value=10, max_value=28, value=14, step=1)
     preview_dpi = st.number_input("Preview DPI", min_value=100, max_value=600, value=100, step=50)
     preview_max_pages = st.number_input("Max pages/images to preview/classify", min_value=1, max_value=10, value=1, step=1)
 
@@ -574,7 +751,7 @@ colA, colB = st.columns([2, 3])
 with colA:
     file_selected = st.selectbox("Pick a file", files, format_func=lambda p: str(p.relative_to(input_dir))) if files else None
     if not files:
-        st.info("Drop some files into the input folder to begin (supported: .pdf .docx .xlsx .csv .txt .eml .png .jpg .jpeg .tif .tiff .bmp .webp .heic).")
+        st.info("Drop some files into the input folder to begin (supported: " + " ".join(sorted(SUPPORTED_EXTS)) + ").")
 
 with colB:
     images = []
