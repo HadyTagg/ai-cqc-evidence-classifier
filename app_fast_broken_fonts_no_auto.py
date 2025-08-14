@@ -1,3 +1,4 @@
+
 import os
 import io
 import csv
@@ -61,31 +62,6 @@ SUPPORTED_EXTS = {
     ".png", ".jpg", ".jpeg", ".tif", ".tiff", ".bmp", ".webp", ".heic"
 }
 
-
-def write_decision_log(row: Dict[str, Any]) -> None:
-    file_exists = Path(DEFAULT_DECISIONS_LOG).exists()
-    with open(DEFAULT_DECISIONS_LOG, "a", newline="", encoding="utf-8") as f:
-        writer = csv.DictWriter(
-            f,
-            fieldnames=[
-                "timestamp",
-                "file",
-                "quality_statements",
-                "evidence_categories",
-                "paths",
-                "reviewer",
-                "notes",
-                "action",
-            ],
-        )
-        if not file_exists:
-            writer.writeheader()
-        if "timestamp" in row:
-            row["timestamp"] = pd.to_datetime(row["timestamp"]).strftime("%d/%m/%y")
-        file_val = row.get("file")
-        row["file"] = Path(file_val).name if file_val else ""
-        writer.writerow(row)
-
 # ---------------------
 # Simple extractors (only used as fallbacks)
 # ---------------------
@@ -108,7 +84,7 @@ def extract_text_from_txt(path: Path) -> str:
 def extract_text_from_docx(path: Path) -> str:
     try:
         d = docx.Document(str(path))
-        return "\n".join(p.text for p in d.paragraphs)
+        return "\\n".join(p.text for p in d.paragraphs)
     except Exception as e:
         return f"[DOCX extraction error: {e}]"
 
@@ -124,9 +100,9 @@ def extract_text_from_xlsx(path: Path) -> str:
         dfs = pd.read_excel(path, sheet_name=None)
         parts = []
         for name, df in dfs.items():
-            parts.append(f"\n--- Sheet: {name} ---\n")
+            parts.append(f"\\n--- Sheet: {name} ---\\n")
             parts.append(df.to_csv(index=False))
-        return "\n".join(parts)
+        return "\\n".join(parts)
     except Exception as e:
         return f"[XLSX read error: {e}]"
 
@@ -164,9 +140,9 @@ def extract_text_from_excel(path: Path) -> str:
             return f"[Excel extraction error: unsupported extension {ext}]"
         parts = []
         for name, df in dfs.items():
-            parts.append(f"\n--- Sheet: {name} ---\n")
+            parts.append(f"\\n--- Sheet: {name} ---\\n")
             parts.append(df.to_csv(index=False))
-        return "\n".join(parts)
+        return "\\n".join(parts)
     except Exception as e:
         return f"[Excel read error: {e}]"
 
@@ -174,7 +150,7 @@ def html_to_text(html: str) -> str:
     soup = BeautifulSoup(html, "lxml")
     for tag in soup(["script", "style"]):
         tag.extract()
-    return soup.get_text("\n", strip=True)
+    return soup.get_text("\\n", strip=True)
 
 def extract_text_from_eml(path: Path) -> Tuple[str, List[Dict[str, Any]]]:
     """Return text content from an .eml. Attachments are ignored and not saved."""
@@ -188,7 +164,7 @@ def extract_text_from_eml(path: Path) -> Tuple[str, List[Dict[str, Any]]]:
             "Date": str(msg.get("Date", "")),
             "Subject": str(msg.get("Subject", "")),
         }
-        header_text = "\n".join(f"{k}: {v}" for k, v in headers.items() if v)
+        header_text = "\\n".join(f"{k}: {v}" for k, v in headers.items() if v)
         body_parts = []
         if msg.is_multipart():
             for part in msg.walk():
@@ -206,7 +182,7 @@ def extract_text_from_eml(path: Path) -> Tuple[str, List[Dict[str, Any]]]:
                 body_parts.append(msg.get_content())
             elif ct == "text/html":
                 body_parts.append(html_to_text(msg.get_content()))
-        full_text = header_text + "\n\n" + "\n".join(body_parts).strip()
+        full_text = header_text + "\\n\\n" + "\\n".join(body_parts).strip()
         return full_text, []
     except Exception as e:
         return f"[EML parse error: {e}]", []
@@ -224,13 +200,13 @@ def extract_text_from_msg(path: Path) -> str:
             val = getattr(m, key, None)
             if val:
                 headers.append(f"{label}: {val}")
-        header_text = "\n".join(headers)
+        header_text = "\\n".join(headers)
         body_text = getattr(m, "body", None) or ""
         if not body_text:
             html_body = getattr(m, "htmlBody", None)
             if html_body:
                 body_text = html_to_text(html_body)
-        return (header_text + "\n\n" + (body_text or "")).strip()
+        return (header_text + "\\n\\n" + (body_text or "")).strip()
     except Exception as e:
         return f"[MSG parse error: {e}]"
 
@@ -288,7 +264,7 @@ def _load_ttf(font_path: str | None, size: int = 14):
 def _wrap_text_to_width(text: str, draw, font, max_width: int, padding: int) -> list[str]:
     """Wrap text so that each line fits within max_width using the provided font."""
     lines_out: list[str] = []
-    for paragraph in text.split("\n"):
+    for paragraph in text.split("\\n"):
         if not paragraph:
             lines_out.append("")
             continue
@@ -309,7 +285,7 @@ def _wrap_text_to_width(text: str, draw, font, max_width: int, padding: int) -> 
 
 def _normalise_whitespace(text: str) -> str:
     # Tabs and non-breaking spaces often break alignment when rendering
-    return (text or "").replace("\r", "").replace("\t", "    ").replace("\u00a0", " ")
+    return (text or "").replace("\\r", "").replace("\\t", "    ").replace("\\u00a0", " ")
 
 def text_to_image(
     text: str,
@@ -387,7 +363,108 @@ def _spreadsheet_to_pdf_with_libreoffice(path: Path, outdir: Path) -> Path | Non
         return None
 
 # ---------------------
-# Rasterization helpers (image preview)
+# Rasterization cache helpers
+# ---------------------
+RASTER_CACHE_DIR = Path(".raster_cache")
+RASTER_CACHE_DIR.mkdir(exist_ok=True)
+
+def _raster_params_dict(
+    dpi: int,
+    max_pages: int,
+    font_path: str | None,
+    font_size: int,
+    text_image_width: int,
+    email_font_path: str | None,
+    email_font_size: int,
+    email_supersample: int,
+) -> Dict[str, Any]:
+    return {
+        "dpi": int(dpi),
+        "max_pages": int(max_pages),
+        "font_path": str(font_path or ""),
+        "font_size": int(font_size),
+        "text_image_width": int(text_image_width),
+        "email_font_path": str(email_font_path or ""),
+        "email_font_size": int(email_font_size),
+        "email_supersample": int(email_supersample),
+    }
+
+def build_raster_cache_key(path: Path, params: Dict[str, Any]) -> str:
+    try:
+        stat = path.stat()
+        payload = {
+            "src": str(path.resolve()),
+            "mtime": int(stat.st_mtime),
+            "size": int(stat.st_size),
+            **params,
+        }
+        return hashlib.sha256(json.dumps(payload, sort_keys=True).encode("utf-8")).hexdigest()
+    except Exception:
+        # Fallback to path string only
+        return hashlib.sha256(str(path).encode("utf-8")).hexdigest()
+
+def _raster_cache_dir_for_key(key: str) -> Path:
+    return RASTER_CACHE_DIR / key
+
+def raster_cache_read(key: str) -> List[Image.Image] | None:
+    d = _raster_cache_dir_for_key(key)
+    meta = d / "meta.json"
+    if not d.exists() or not meta.exists():
+        return None
+    try:
+        info = json.loads(meta.read_text(encoding="utf-8"))  # noqa: F841 (reserved for future use)
+        images: List[Image.Image] = []
+        # Load page_000.png, page_001.png, ...
+        i = 0
+        while True:
+            p = d / f"page_{i:03d}.png"
+            if not p.exists():
+                break
+            if Image is None:
+                return None
+            images.append(Image.open(p))
+            i += 1
+        return images if images else None
+    except Exception:
+        return None
+
+def raster_cache_write(key: str, params: Dict[str, Any], images: List[Image.Image]) -> None:
+    try:
+        d = _raster_cache_dir_for_key(key)
+        if d.exists():
+            # Clean old contents
+            for f in d.glob("*"):
+                try:
+                    f.unlink()
+                except Exception:
+                    pass
+        d.mkdir(parents=True, exist_ok=True)
+        for i, img in enumerate(images):
+            out = d / f"page_{i:03d}.png"
+            img.save(out, format="PNG")
+        (d / "meta.json").write_text(json.dumps({"params": params, "count": len(images)}, indent=2), encoding="utf-8")
+    except Exception:
+        pass
+
+def clear_raster_cache() -> int:
+    """Delete all files in the raster cache. Returns number of files removed."""
+    removed = 0
+    try:
+        if RASTER_CACHE_DIR.exists():
+            for p in RASTER_CACHE_DIR.rglob("*"):
+                try:
+                    if p.is_file():
+                        p.unlink()
+                        removed += 1
+                except Exception:
+                    pass
+            # Preserve the directory
+    except Exception:
+        pass
+    return removed
+
+# ---------------------
+# Rasterization helpers (image preview) with caching
 # ---------------------
 def rasterize_to_images(
     path: Path,
@@ -400,19 +477,38 @@ def rasterize_to_images(
     email_font_path: str | None = None,
     email_font_size: int = 15,
     email_supersample: int = 2,
+    # Cache controls
+    use_cache: bool = True,
 ) -> List[Image.Image]:
     ext = path.suffix.lower()
-    # Raw images
+    params = _raster_params_dict(
+        dpi, max_pages, font_path, font_size, text_image_width, email_font_path, email_font_size, email_supersample
+    )
+    cache_key = build_raster_cache_key(path, params)
+
+    # For raw image types, just open directly (no need to cache copies)
     if ext in {".png", ".jpg", ".jpeg", ".tif", ".tiff", ".bmp", ".webp", ".heic"}:
         if Image is None:
             raise RuntimeError("Pillow not available to load images")
         return [Image.open(path)]
+
+    # Try cache first
+    if use_cache:
+        cached = raster_cache_read(cache_key)
+        if cached:
+            return cached
+
+    images: List[Image.Image] = []
+
     # PDFs
     if ext == ".pdf" and convert_from_path is not None:
-        imgs = convert_from_path(str(path), dpi=int(dpi))
+        images = convert_from_path(str(path), dpi=int(dpi))
         if max_pages:
-            imgs = imgs[:max_pages]
-        return imgs
+            images = images[:max_pages]
+        if use_cache:
+            raster_cache_write(cache_key, params, images)
+        return images
+
     # DOCX -> try LibreOffice to PDF, then pdf2image; else fallback to text rasterization
     if ext == ".docx":
         outdir = Path(".docx_pdf"); outdir.mkdir(exist_ok=True)
@@ -423,55 +519,82 @@ def rasterize_to_images(
                 check=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE
             )
             if pdf_out.exists() and convert_from_path is not None:
-                imgs = convert_from_path(str(pdf_out), dpi=int(dpi))
+                images = convert_from_path(str(pdf_out), dpi=int(dpi))
                 if max_pages:
-                    imgs = imgs[:max_pages]
-                return imgs
+                    images = images[:max_pages]
+                if use_cache:
+                    raster_cache_write(cache_key, params, images)
+                return images
         except Exception:
             pass
         txt = extract_text_from_docx(path)
-        return [text_to_image(txt, width=int(text_image_width), font_path=font_path, font_size=int(font_size))]
+        images = [text_to_image(txt, width=int(text_image_width), font_path=font_path, font_size=int(font_size))]
+        if use_cache:
+            raster_cache_write(cache_key, params, images)
+        return images
+
     # EML/MSG/TXT -> rasterize extracted text
     if ext == ".eml":
         txt, _ = extract_text_from_eml(path)
-        return [text_to_image(
+        images = [text_to_image(
             txt,
             width=int(text_image_width),
             font_path=email_font_path or font_path,
             font_size=int(email_font_size),
             supersample=int(email_supersample),
         )]
+        if use_cache:
+            raster_cache_write(cache_key, params, images)
+        return images
+
     if ext == ".msg":
-        return [text_to_image(
+        images = [text_to_image(
             extract_text_from_msg(path),
             width=int(text_image_width),
             font_path=email_font_path or font_path,
             font_size=int(email_font_size),
             supersample=int(email_supersample),
         )]
+        if use_cache:
+            raster_cache_write(cache_key, params, images)
+        return images
+
     if ext == ".txt":
-        return [text_to_image(
+        images = [text_to_image(
             extract_text_from_txt(path),
             width=int(text_image_width),
             font_path=font_path,
             font_size=int(font_size),
         )]
+        if use_cache:
+            raster_cache_write(cache_key, params, images)
+        return images
+
     # SPREADSHEETS (XLSX/XLSM/XLS/CSV) -> PDF via LibreOffice, then to images
     if ext in {".xlsx", ".xlsm", ".xls", ".csv"}:
         pdf = _spreadsheet_to_pdf_with_libreoffice(path, Path(".sheet_pdf"))
         if pdf and convert_from_path is not None:
-            imgs = convert_from_path(str(pdf), dpi=int(dpi))
+            images = convert_from_path(str(pdf), dpi=int(dpi))
             if max_pages:
-                imgs = imgs[:max_pages]
-            return imgs
+                images = images[:max_pages]
+            if use_cache:
+                raster_cache_write(cache_key, params, images)
+            return images
         # Fallback to text-based rendering if PDF conversion or pdf2image is unavailable
         if ext == ".csv":
             txt = extract_text_from_csv(path)
         else:
             txt = extract_text_from_excel(path)
-        return [text_to_image(txt, width=int(text_image_width), font_path=font_path, font_size=int(font_size))]
+        images = [text_to_image(txt, width=int(text_image_width), font_path=font_path, font_size=int(font_size))]
+        if use_cache:
+            raster_cache_write(cache_key, params, images)
+        return images
+
     # Unknown -> best effort
-    return [text_to_image(f"[Unsupported for rasterization: {ext}] {path}", width=int(text_image_width), font_path=font_path, font_size=int(font_size))]
+    images = [text_to_image(f"[Unsupported for rasterization: {ext}] {path}", width=int(text_image_width), font_path=font_path, font_size=int(font_size))]
+    if use_cache:
+        raster_cache_write(cache_key, params, images)
+    return images
 
 # ---------------------
 # Taxonomy & Paths
@@ -488,7 +611,7 @@ def list_evidence_categories(taxonomy: Dict[str, Any]) -> List[str]:
     return taxonomy.get("evidence_categories", [])
 
 def _sanitize(s: str) -> str:
-    s = (s or "").strip().replace("/", "-").replace("\\", "-")
+    s = (s or "").strip().replace("/", "-").replace("\\\\", "-")
     for ch in '<>:"|?*':
         s = s.replace(ch, '')
     return ' '.join(s.split())[:100]
@@ -602,16 +725,16 @@ class LLMProvider:
         qs_brief = build_qs_brief(taxonomy)
         cats = taxonomy.get("evidence_categories", [])
         system_prompt = (
-            "You are a compliance assistant for a CQC-regulated care service.\n"
+            "You are a compliance assistant for a CQC-regulated care service.\\n"
             "You will be given image(s) of an evidence item (scan/photo). Map it to one or more CQC Quality Statements "
-            "and to the main Evidence Category.\n\n"
-            "GROUNDING MATERIAL provided for each Quality Statement includes:\n"
-            "- 'we_statement' (verbatim)\n"
-            "- 'we_explanation' (verbatim)\n"
-            "- 'what_this_quality_statement_means' (verbatim block) and parsed 'means_bullets'\n"
-            "- 'i_statements'\n"
-            "- 'subtopics'\n"
-            "- 'source_url'\n"
+            "and to the main Evidence Category.\\n\\n"
+            "GROUNDING MATERIAL provided for each Quality Statement includes:\\n"
+            "- 'we_statement' (verbatim)\\n"
+            "- 'we_explanation' (verbatim)\\n"
+            "- 'what_this_quality_statement_means' (verbatim block) and parsed 'means_bullets'\\n"
+            "- 'i_statements'\\n"
+            "- 'subtopics'\\n"
+            "- 'source_url'\\n"
             "Use these verbatim texts to make precise mappings. Prefer precision over breadth. "
             "Justify each mapping with a short rationale referencing visible content, and select matching I-statements, "
             "subtopics, or 'means_bullets'. Return ONLY a JSON object per the schema."
@@ -747,48 +870,68 @@ def build_qs_brief(taxonomy: Dict[str, Any]) -> List[Dict[str, Any]]:
 # ---------------------
 st.set_page_config(page_title=APP_TITLE, layout="wide")
 st.title(APP_TITLE)
-st.caption("Spreadsheets are now rendered visually (LibreOffice → PDF → images) for classification. Email previews improved (mono font + supersampling).")
+st.caption("Spreadsheets are now rendered visually (LibreOffice → PDF → images) for classification. Email previews improved (mono font + supersampling). Rasterization now cached to cut down repeated conversions.")
 
 with st.sidebar:
     st.header("Settings")
-    input_dir = Path(st.text_input("Input folder (files to classify)", value=str(Path.cwd() / "input")))
-    output_dir = Path(st.text_input("Output base folder (root for filing)", value=str(Path.cwd() / "classified")))
+    tabs = st.tabs(["Files", "LLM", "Preview", "Filing"])
 
-    taxonomy_path = st.text_input("Taxonomy file (YAML)", value=str(Path.cwd() / "cqc_taxonomy.yaml"))
-    if st.button("Reload taxonomy"):
-        st.cache_data.clear()
+    # --- Files tab ---
+    with tabs[0]:
+        input_dir = Path(st.text_input("Input folder (files to classify)", value=str(Path.cwd() / "input")))
+        output_dir = Path(st.text_input("Output base folder (root for filing)", value=str(Path.cwd() / "classified")))
 
-    provider = st.selectbox("LLM provider", ["openai"], index=0)
-    model = st.text_input("Model", value="gpt-5-chat-latest")
-    api_key = st.text_input("OpenAI API Key", value=os.getenv("OPENAI_API_KEY", ""), type="password")
+        taxonomy_path = st.text_input("Taxonomy file (YAML)", value=str(Path.cwd() / "cqc_taxonomy.yaml"))
+        col_reload, col_clear = st.columns([1,1])
+        with col_reload:
+            if st.button("Reload taxonomy"):
+                st.cache_data.clear()
+        with col_clear:
+            if st.button("Clear raster cache"):
+                removed = clear_raster_cache()
+                st.toast(f"Cleared raster cache ({removed} files removed).")
 
-    request_timeout = st.number_input("API timeout (sec)", min_value=10, max_value=120, value=60, step=5)
-    max_retries = st.number_input("Max retries on 429/5xx", min_value=0, max_value=10, value=3, step=1)
-    use_cache = st.checkbox("Use cached results (by content)", value=True)
-    cooldown_secs = st.number_input("Cooldown between calls (sec)", min_value=0, max_value=120, value=10, step=5)
+    # --- LLM tab ---
+    with tabs[1]:
+        provider = st.selectbox("LLM provider", ["openai"], index=0)
+        model = st.text_input("Model", value="gpt-5-chat-latest")
+        api_key = st.text_input("OpenAI API Key", value=os.getenv("OPENAI_API_KEY", ""), type="password")
 
-    st.markdown("**Preview settings**")
-    preview_dpi = st.number_input("Preview DPI (PDF/image sources)", min_value=100, max_value=600, value=150, step=50)
-    preview_max_pages = st.number_input("Max pages/images to preview/classify", min_value=1, max_value=10, value=2, step=1)
+        request_timeout = st.number_input("API timeout (sec)", min_value=10, max_value=120, value=60, step=5)
+        max_retries = st.number_input("Max retries on 429/5xx", min_value=0, max_value=10, value=3, step=1)
+        use_cache = st.checkbox("Use cached results (by content)", value=True)
+        cooldown_secs = st.number_input("Cooldown between calls (sec)", min_value=0, max_value=120, value=10, step=5)
 
-    st.markdown("**Text preview font (fallback modes)**")
-    font_path = st.text_input("TTF font path (optional)", value=_find_default_ttf() or "")
-    font_size = st.number_input("Font size", min_value=10, max_value=28, value=14, step=1)
-    text_image_width = st.number_input("Text image width (px)", min_value=800, max_value=2400, value=1400, step=50)
+        st.markdown("**LLM image controls**")
+        llm_image_max_width = st.number_input("LLM image max width (px)", min_value=512, max_value=2048, value=1024, step=128)
+        auto_fallback = st.checkbox("Auto-fallback on 429/5xx", value=True)
+        fallback_model = st.text_input("Fallback model", value="gpt-5-mini")
 
-    st.markdown("**Email (.eml/.msg) preview fixes**")
-    email_use_mono = st.checkbox("Use monospaced font for emails", value=True)
-    email_font_path = st.text_input("Email TTF path (optional)", value=_find_monospace_ttf() or (font_path or ""))
-    email_font_size = st.number_input("Email font size", min_value=10, max_value=28, value=15, step=1)
-    email_supersample = st.number_input("Email supersample factor (anti‑smear)", min_value=1, max_value=4, value=2, step=1)
+    # --- Preview tab ---
+    with tabs[2]:
+        st.markdown("**Preview settings**")
+        preview_dpi = st.number_input("Preview DPI (PDF/image sources)", min_value=100, max_value=600, value=150, step=50)
+        preview_max_pages = st.number_input("Max pages/images to preview/classify", min_value=1, max_value=10, value=2, step=1)
 
-    st.markdown("**LLM image controls**")
-    llm_image_max_width = st.number_input("LLM image max width (px)", min_value=512, max_value=2048, value=1024, step=128)
-    auto_fallback = st.checkbox("Auto-fallback on 429/5xx", value=True)
-    fallback_model = st.text_input("Fallback model", value="gpt-5-mini")
+        st.markdown("**Text preview font (fallback modes)**")
+        font_path = st.text_input("TTF font path (optional)", value=_find_default_ttf() or "")
+        font_size = st.number_input("Font size", min_value=10, max_value=28, value=14, step=1)
+        text_image_width = st.number_input("Text image width (px)", min_value=800, max_value=2400, value=1400, step=50)
 
-    move_or_copy = st.radio("On approval, file by…", ["Copy", "Move"], index=0)
-    st.caption("Nothing is filed without your approval. Every decision is logged.")
+        st.markdown("**Email (.eml/.msg) preview fixes**")
+        email_use_mono = st.checkbox("Use monospaced font for emails", value=True)
+        email_font_path = st.text_input("Email TTF path (optional)", value=_find_monospace_ttf() or (font_path or ""))
+        email_font_size = st.number_input("Email font size", min_value=10, max_value=28, value=15, step=1)
+        email_supersample = st.number_input("Email supersample factor (anti‑smear)", min_value=1, max_value=4, value=2, step=1)
+
+        st.markdown("**Raster cache**")
+        raster_cache_enabled = st.checkbox("Cache rasterized previews", value=True)
+        st.caption("Caching avoids repeated LibreOffice/pdf2image runs. Cache invalidates automatically if the source file or preview settings change.")
+
+    # --- Filing tab ---
+    with tabs[3]:
+        move_or_copy = st.radio("On approval, file by…", ["Copy", "Move"], index=0)
+        st.caption("Nothing is filed without your approval. Every decision is logged.")
 
 # Load taxonomy
 try:
@@ -820,83 +963,6 @@ prov.llm_image_max_width = int(llm_image_max_width)
 prov.auto_fallback = bool(auto_fallback)
 prov.fallback_model = (fallback_model or "").strip() or None
 
-if files and st.button("Auto-classify all files (no manual review)"):
-    progress = st.progress(0)
-    for idx, f in enumerate(files):
-        try:
-            imgs = rasterize_to_images(
-                f,
-                dpi=int(preview_dpi),
-                max_pages=int(preview_max_pages),
-                font_path=font_path or None,
-                font_size=int(font_size),
-                text_image_width=int(text_image_width),
-                email_font_path=(email_font_path if email_use_mono else (font_path or None)),
-                email_font_size=int(email_font_size),
-                email_supersample=int(email_supersample),
-            )
-            key = build_llm_cache_key("[image-mode]" + str(f), taxonomy, model, "Vision-only")
-            cached = llm_cache_read(key) if use_cache else None
-            if cached:
-                result = cached
-            else:
-                result = prov.classify_images(imgs, taxonomy)
-                if use_cache and result and not result.get("error"):
-                    llm_cache_write(key, result)
-            if result.get("error"):
-                write_decision_log({
-                    "timestamp": pd.Timestamp.utcnow(),
-                    "file": str(f),
-                    "quality_statements": json.dumps([]),
-                    "evidence_categories": json.dumps([]),
-                    "paths": json.dumps([]),
-                    "reviewer": "automatic",
-                    "notes": result.get("error"),
-                    "action": "error",
-                })
-            else:
-                selected_qs = [q.get("id") for q in result.get("quality_statements", []) if q.get("id") in qs_map]
-                selected_q_titles = [qs_map[qid]["title"] for qid in selected_qs if qid in qs_map]
-                selected_cats = [c for c in result.get("evidence_categories", []) if c in cat_options]
-                paths = propose_storage_paths(taxonomy, selected_qs, selected_cats)
-                original_path = f; original_name = f.name
-                first_dest_file = None
-                for j, rel in enumerate(paths):
-                    dest_dir = output_dir / rel; dest_dir.mkdir(parents=True, exist_ok=True)
-                    dest_file = dest_dir / original_name
-                    if j == 0:
-                        if move_or_copy == "Move":
-                            shutil.move(str(original_path), str(dest_file)); first_dest_file = dest_file
-                        else:
-                            shutil.copy2(str(original_path), str(dest_file)); first_dest_file = dest_file
-                    else:
-                        src = first_dest_file if move_or_copy == "Move" else original_path
-                        if src and Path(src).exists():
-                            shutil.copy2(str(src), str(dest_file))
-                write_decision_log({
-                    "timestamp": pd.Timestamp.utcnow(),
-                    "file": str(original_path),
-                    "quality_statements": json.dumps(selected_q_titles),
-                    "evidence_categories": json.dumps(selected_cats),
-                    "paths": json.dumps(paths),
-                    "reviewer": "automatic",
-                    "notes": "not verified",
-                    "action": "auto-filed (unverified)",
-                })
-        except Exception as e:
-            write_decision_log({
-                "timestamp": pd.Timestamp.utcnow(),
-                "file": str(f),
-                "quality_statements": json.dumps([]),
-                "evidence_categories": json.dumps([]),
-                "paths": json.dumps([]),
-                "reviewer": "automatic",
-                "notes": f"error: {e}",
-                "action": "error",
-            })
-        progress.progress((idx + 1) / len(files))
-    st.success("Auto classification completed.")
-
 colA, colB = st.columns([2, 3])
 with colA:
     file_selected = st.selectbox("Pick a file", files, format_func=lambda p: str(p.relative_to(input_dir))) if files else None
@@ -917,6 +983,7 @@ with colB:
                 email_font_path=(email_font_path if email_use_mono else (font_path or None)),
                 email_font_size=int(email_font_size),
                 email_supersample=int(email_supersample),
+                use_cache=bool(raster_cache_enabled),
             )
             st.markdown(f"**Preview (images): {file_selected.name}**")
             st.image(images, caption=[f"image {i+1}" for i in range(len(images))], use_container_width=True)
@@ -953,6 +1020,7 @@ if st.button("Run LLM on this file"):
                         email_font_path=(email_font_path if email_use_mono else (font_path or None)),
                         email_font_size=int(email_font_size),
                         email_supersample=int(email_supersample),
+                        use_cache=bool(raster_cache_enabled),
                     )
                     result = prov.classify_images(imgs, taxonomy)
                     if use_cache and result and not result.get('error'):
@@ -1055,8 +1123,6 @@ if result:
         for p in paths:
             st.write(f"- {p}")
 
-        selected_titles = [qs_map[qid]["title"] for qid in selected_qs if qid in qs_map]
-
         notes = st.text_area("Reviewer notes (optional)", value=result.get("notes", ""))
         signed_off = st.checkbox("I confirm the above classification and approve filing.")
         reviewer = st.text_input("Your name for the audit log", value=os.getenv("USER", "Reviewer"))
@@ -1065,6 +1131,14 @@ if result:
             approve = st.button("Approve & File")
         with col2:
             reject = st.button("Reject (do not file)")
+
+        def write_decision_log(row: Dict[str, Any]):
+            file_exists = Path(DEFAULT_DECISIONS_LOG).exists()
+            with open(DEFAULT_DECISIONS_LOG, "a", newline="", encoding="utf-8") as f:
+                writer = csv.DictWriter(f, fieldnames=["timestamp","file","provider","model","quality_statements","evidence_categories","paths","reviewer","notes","action"])
+                if not file_exists:
+                    writer.writeheader()
+                writer.writerow(row)
 
         if approve:
             if not signed_off:
@@ -1085,9 +1159,11 @@ if result:
                         if src and Path(src).exists():
                             shutil.copy2(str(src), str(dest_file))
                 write_decision_log({
-                    "timestamp": pd.Timestamp.utcnow(),
+                    "timestamp": pd.Timestamp.utcnow().isoformat(),
                     "file": str(original_path),
-                    "quality_statements": json.dumps(selected_titles),
+                    "provider": provider,
+                    "model": model,
+                    "quality_statements": json.dumps(selected_qs),
                     "evidence_categories": json.dumps(selected_cats),
                     "paths": json.dumps(paths),
                     "reviewer": reviewer,
@@ -1097,9 +1173,11 @@ if result:
                 st.success("Filed to all selected locations.")
         if reject:
             write_decision_log({
-                "timestamp": pd.Timestamp.utcnow(),
+                "timestamp": pd.Timestamp.utcnow().isoformat(),
                 "file": str(file_selected) if file_selected else "",
-                "quality_statements": json.dumps(selected_titles if result else []),
+                "provider": provider,
+                "model": model,
+                "quality_statements": json.dumps(selected_qs if result else []),
                 "evidence_categories": json.dumps(selected_cats if result else []),
                 "paths": json.dumps(paths if result else []),
                 "reviewer": reviewer,
