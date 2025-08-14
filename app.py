@@ -61,6 +61,29 @@ SUPPORTED_EXTS = {
     ".png", ".jpg", ".jpeg", ".tif", ".tiff", ".bmp", ".webp", ".heic"
 }
 
+
+def write_decision_log(row: Dict[str, Any]) -> None:
+    file_exists = Path(DEFAULT_DECISIONS_LOG).exists()
+    with open(DEFAULT_DECISIONS_LOG, "a", newline="", encoding="utf-8") as f:
+        writer = csv.DictWriter(
+            f,
+            fieldnames=[
+                "timestamp",
+                "file",
+                "provider",
+                "model",
+                "quality_statements",
+                "evidence_categories",
+                "paths",
+                "reviewer",
+                "notes",
+                "action",
+            ],
+        )
+        if not file_exists:
+            writer.writeheader()
+        writer.writerow(row)
+
 # ---------------------
 # Simple extractors (only used as fallbacks)
 # ---------------------
@@ -795,6 +818,88 @@ prov.llm_image_max_width = int(llm_image_max_width)
 prov.auto_fallback = bool(auto_fallback)
 prov.fallback_model = (fallback_model or "").strip() or None
 
+if files and st.button("Auto-classify all files (no manual review)"):
+    progress = st.progress(0)
+    for idx, f in enumerate(files):
+        try:
+            imgs = rasterize_to_images(
+                f,
+                dpi=int(preview_dpi),
+                max_pages=int(preview_max_pages),
+                font_path=font_path or None,
+                font_size=int(font_size),
+                text_image_width=int(text_image_width),
+                email_font_path=(email_font_path if email_use_mono else (font_path or None)),
+                email_font_size=int(email_font_size),
+                email_supersample=int(email_supersample),
+            )
+            key = build_llm_cache_key("[image-mode]" + str(f), taxonomy, model, "Vision-only")
+            cached = llm_cache_read(key) if use_cache else None
+            if cached:
+                result = cached
+            else:
+                result = prov.classify_images(imgs, taxonomy)
+                if use_cache and result and not result.get("error"):
+                    llm_cache_write(key, result)
+            if result.get("error"):
+                write_decision_log({
+                    "timestamp": pd.Timestamp.utcnow().isoformat(),
+                    "file": str(f),
+                    "provider": provider,
+                    "model": model,
+                    "quality_statements": json.dumps([]),
+                    "evidence_categories": json.dumps([]),
+                    "paths": json.dumps([]),
+                    "reviewer": "automatic",
+                    "notes": result.get("error"),
+                    "action": "error",
+                })
+            else:
+                selected_qs = [q.get("id") for q in result.get("quality_statements", []) if q.get("id") in qs_map]
+                selected_cats = [c for c in result.get("evidence_categories", []) if c in cat_options]
+                paths = propose_storage_paths(taxonomy, selected_qs, selected_cats)
+                original_path = f; original_name = f.name
+                first_dest_file = None
+                for j, rel in enumerate(paths):
+                    dest_dir = output_dir / rel; dest_dir.mkdir(parents=True, exist_ok=True)
+                    dest_file = dest_dir / original_name
+                    if j == 0:
+                        if move_or_copy == "Move":
+                            shutil.move(str(original_path), str(dest_file)); first_dest_file = dest_file
+                        else:
+                            shutil.copy2(str(original_path), str(dest_file)); first_dest_file = dest_file
+                    else:
+                        src = first_dest_file if move_or_copy == "Move" else original_path
+                        if src and Path(src).exists():
+                            shutil.copy2(str(src), str(dest_file))
+                write_decision_log({
+                    "timestamp": pd.Timestamp.utcnow().isoformat(),
+                    "file": str(original_path),
+                    "provider": provider,
+                    "model": model,
+                    "quality_statements": json.dumps(selected_qs),
+                    "evidence_categories": json.dumps(selected_cats),
+                    "paths": json.dumps(paths),
+                    "reviewer": "automatic",
+                    "notes": "not verified",
+                    "action": "auto-filed",
+                })
+        except Exception as e:
+            write_decision_log({
+                "timestamp": pd.Timestamp.utcnow().isoformat(),
+                "file": str(f),
+                "provider": provider,
+                "model": model,
+                "quality_statements": json.dumps([]),
+                "evidence_categories": json.dumps([]),
+                "paths": json.dumps([]),
+                "reviewer": "automatic",
+                "notes": f"error: {e}",
+                "action": "error",
+            })
+        progress.progress((idx + 1) / len(files))
+    st.success("Auto classification completed.")
+
 colA, colB = st.columns([2, 3])
 with colA:
     file_selected = st.selectbox("Pick a file", files, format_func=lambda p: str(p.relative_to(input_dir))) if files else None
@@ -961,14 +1066,6 @@ if result:
             approve = st.button("Approve & File")
         with col2:
             reject = st.button("Reject (do not file)")
-
-        def write_decision_log(row: Dict[str, Any]):
-            file_exists = Path(DEFAULT_DECISIONS_LOG).exists()
-            with open(DEFAULT_DECISIONS_LOG, "a", newline="", encoding="utf-8") as f:
-                writer = csv.DictWriter(f, fieldnames=["timestamp","file","provider","model","quality_statements","evidence_categories","paths","reviewer","notes","action"])
-                if not file_exists:
-                    writer.writeheader()
-                writer.writerow(row)
 
         if approve:
             if not signed_off:
