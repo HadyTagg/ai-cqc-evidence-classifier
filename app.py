@@ -873,6 +873,11 @@ if files and st.button("Auto-classify all files (no manual review)"):
                         src = first_dest_file if move_or_copy == "Move" else original_path
                         if src and Path(src).exists():
                             shutil.copy2(str(src), str(dest_file))
+                notes_val = result.get("notes")
+                if notes_val:
+                    notes_val = f"{notes_val} (not verified)"
+                else:
+                    notes_val = "not verified"
                 write_decision_log({
                     "timestamp": pd.Timestamp.utcnow(),
                     "file": str(original_path),
@@ -880,7 +885,7 @@ if files and st.button("Auto-classify all files (no manual review)"):
                     "evidence_categories": json.dumps(selected_cats),
                     "paths": json.dumps(paths),
                     "reviewer": "automatic",
-                    "notes": "not verified",
+                    "notes": notes_val,
                     "action": "auto-filed (unverified)",
                 })
         except Exception as e:
