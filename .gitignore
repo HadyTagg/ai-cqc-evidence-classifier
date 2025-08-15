@@ -11,6 +11,7 @@ decisions.csv
 .llm_cache/
 .docx_pdf/
 .sheet_pdf/
+.raster_cache/
 
 # Vim/Neovim — swap files
 *.swp

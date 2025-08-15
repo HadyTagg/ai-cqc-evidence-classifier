@@ -371,6 +371,104 @@ def pil_to_data_url_jpeg(img: Image.Image, quality: int = 80) -> str:
     return f"data:image/jpeg;base64,{b}"
 
 # ---------------------
+# Raster cache for image previews
+# ---------------------
+
+RASTER_CACHE_DIR = Path(".raster_cache")
+RASTER_CACHE_DIR.mkdir(exist_ok=True)
+
+def _raster_params_dict(
+    dpi: int,
+    max_pages: int,
+    font_path: str | None,
+    font_size: int,
+    text_image_width: int,
+    email_font_path: str | None,
+    email_font_size: int,
+    email_supersample: int,
+) -> Dict[str, Any]:
+    return {
+        "dpi": int(dpi),
+        "max_pages": int(max_pages),
+        "font_path": str(font_path or ""),
+        "font_size": int(font_size),
+        "text_image_width": int(text_image_width),
+        "email_font_path": str(email_font_path or ""),
+        "email_font_size": int(email_font_size),
+        "email_supersample": int(email_supersample),
+    }
+
+def build_raster_cache_key(path: Path, params: Dict[str, Any]) -> str:
+    try:
+        stat = path.stat()
+        payload = {
+            "src": str(path.resolve()),
+            "mtime": int(stat.st_mtime),
+            "size": int(stat.st_size),
+            **params,
+        }
+        return hashlib.sha256(json.dumps(payload, sort_keys=True).encode("utf-8")).hexdigest()
+    except Exception:
+        return hashlib.sha256(str(path).encode("utf-8")).hexdigest()
+
+def _raster_cache_dir_for_key(key: str) -> Path:
+    return RASTER_CACHE_DIR / key
+
+def raster_cache_read(key: str) -> List[Image.Image] | None:
+    d = _raster_cache_dir_for_key(key)
+    meta = d / "meta.json"
+    if not d.exists() or not meta.exists():
+        return None
+    try:
+        _ = json.loads(meta.read_text(encoding="utf-8"))  # Reserved for future use
+        images: List[Image.Image] = []
+        i = 0
+        while True:
+            p = d / f"page_{i:03d}.png"
+            if not p.exists():
+                break
+            if Image is None:
+                return None
+            images.append(Image.open(p))
+            i += 1
+        return images if images else None
+    except Exception:
+        return None
+
+def raster_cache_write(key: str, params: Dict[str, Any], images: List[Image.Image]) -> None:
+    try:
+        d = _raster_cache_dir_for_key(key)
+        if d.exists():
+            for f in d.glob("*"):
+                try:
+                    f.unlink()
+                except Exception:
+                    pass
+        d.mkdir(parents=True, exist_ok=True)
+        for i, img in enumerate(images):
+            out = d / f"page_{i:03d}.png"
+            img.save(out, format="PNG")
+        (d / "meta.json").write_text(json.dumps({"params": params, "count": len(images)}, indent=2), encoding="utf-8")
+    except Exception:
+        pass
+
+def clear_raster_cache() -> int:
+    """Delete all files in the raster cache. Returns number of files removed."""
+    removed = 0
+    try:
+        if RASTER_CACHE_DIR.exists():
+            for p in RASTER_CACHE_DIR.rglob("*"):
+                try:
+                    if p.is_file():
+                        p.unlink()
+                        removed += 1
+                except Exception:
+                    pass
+    except Exception:
+        pass
+    return removed
+
+# ---------------------
 # Spreadsheet -> PDF (for visual classification)
 # ---------------------
 def _spreadsheet_to_pdf_with_libreoffice(path: Path, outdir: Path) -> Path | None:
@@ -400,19 +498,37 @@ def rasterize_to_images(
     email_font_path: str | None = None,
     email_font_size: int = 15,
     email_supersample: int = 2,
+    # Cache controls
+    use_cache: bool = True,
 ) -> List[Image.Image]:
     ext = path.suffix.lower()
-    # Raw images
+    params = _raster_params_dict(
+        dpi, max_pages, font_path, font_size, text_image_width, email_font_path, email_font_size, email_supersample
+    )
+    cache_key = build_raster_cache_key(path, params)
+
+    # Raw images (no caching of original files)
     if ext in {".png", ".jpg", ".jpeg", ".tif", ".tiff", ".bmp", ".webp", ".heic"}:
         if Image is None:
             raise RuntimeError("Pillow not available to load images")
         return [Image.open(path)]
+
+    if use_cache:
+        cached = raster_cache_read(cache_key)
+        if cached:
+            return cached
+
+    images: List[Image.Image] = []
+
     # PDFs
     if ext == ".pdf" and convert_from_path is not None:
-        imgs = convert_from_path(str(path), dpi=int(dpi))
+        images = convert_from_path(str(path), dpi=int(dpi))
         if max_pages:
-            imgs = imgs[:max_pages]
-        return imgs
+            images = images[:max_pages]
+        if use_cache:
+            raster_cache_write(cache_key, params, images)
+        return images
+
     # DOCX -> try LibreOffice to PDF, then pdf2image; else fallback to text rasterization
     if ext == ".docx":
         outdir = Path(".docx_pdf"); outdir.mkdir(exist_ok=True)
@@ -423,55 +539,82 @@ def rasterize_to_images(
                 check=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE
             )
             if pdf_out.exists() and convert_from_path is not None:
-                imgs = convert_from_path(str(pdf_out), dpi=int(dpi))
+                images = convert_from_path(str(pdf_out), dpi=int(dpi))
                 if max_pages:
-                    imgs = imgs[:max_pages]
-                return imgs
+                    images = images[:max_pages]
+                if use_cache:
+                    raster_cache_write(cache_key, params, images)
+                return images
         except Exception:
             pass
         txt = extract_text_from_docx(path)
-        return [text_to_image(txt, width=int(text_image_width), font_path=font_path, font_size=int(font_size))]
+        images = [text_to_image(txt, width=int(text_image_width), font_path=font_path, font_size=int(font_size))]
+        if use_cache:
+            raster_cache_write(cache_key, params, images)
+        return images
+
     # EML/MSG/TXT -> rasterize extracted text
     if ext == ".eml":
         txt, _ = extract_text_from_eml(path)
-        return [text_to_image(
+        images = [text_to_image(
             txt,
             width=int(text_image_width),
             font_path=email_font_path or font_path,
             font_size=int(email_font_size),
             supersample=int(email_supersample),
         )]
+        if use_cache:
+            raster_cache_write(cache_key, params, images)
+        return images
+
     if ext == ".msg":
-        return [text_to_image(
+        images = [text_to_image(
             extract_text_from_msg(path),
             width=int(text_image_width),
             font_path=email_font_path or font_path,
             font_size=int(email_font_size),
             supersample=int(email_supersample),
         )]
+        if use_cache:
+            raster_cache_write(cache_key, params, images)
+        return images
+
     if ext == ".txt":
-        return [text_to_image(
+        images = [text_to_image(
             extract_text_from_txt(path),
             width=int(text_image_width),
             font_path=font_path,
             font_size=int(font_size),
         )]
+        if use_cache:
+            raster_cache_write(cache_key, params, images)
+        return images
+
     # SPREADSHEETS (XLSX/XLSM/XLS/CSV) -> PDF via LibreOffice, then to images
     if ext in {".xlsx", ".xlsm", ".xls", ".csv"}:
         pdf = _spreadsheet_to_pdf_with_libreoffice(path, Path(".sheet_pdf"))
         if pdf and convert_from_path is not None:
-            imgs = convert_from_path(str(pdf), dpi=int(dpi))
+            images = convert_from_path(str(pdf), dpi=int(dpi))
             if max_pages:
-                imgs = imgs[:max_pages]
-            return imgs
+                images = images[:max_pages]
+            if use_cache:
+                raster_cache_write(cache_key, params, images)
+            return images
         # Fallback to text-based rendering if PDF conversion or pdf2image is unavailable
         if ext == ".csv":
             txt = extract_text_from_csv(path)
         else:
             txt = extract_text_from_excel(path)
-        return [text_to_image(txt, width=int(text_image_width), font_path=font_path, font_size=int(font_size))]
+        images = [text_to_image(txt, width=int(text_image_width), font_path=font_path, font_size=int(font_size))]
+        if use_cache:
+            raster_cache_write(cache_key, params, images)
+        return images
+
     # Unknown -> best effort
-    return [text_to_image(f"[Unsupported for rasterization: {ext}] {path}", width=int(text_image_width), font_path=font_path, font_size=int(font_size))]
+    images = [text_to_image(f"[Unsupported for rasterization: {ext}] {path}", width=int(text_image_width), font_path=font_path, font_size=int(font_size))]
+    if use_cache:
+        raster_cache_write(cache_key, params, images)
+    return images
 
 # ---------------------
 # Taxonomy & Paths
