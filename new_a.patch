@@ -1,9 +1,9 @@
  (cd "$(git rev-parse --show-toplevel)" && git apply --3way <<'EOF' 
 diff --git a/app.py b/app.py
-index d841a2194de10a4ab5eee3d2e238af88902acd55..063f5b9986e5c4cbc3d25d57d64dc89be1ac9839 100644
+index cc2ea5fbb0ed771cdf92f26219e1cfb87f01c989..881e0316b5800644610c29319c2bb2659db0b8e5 100644
 --- a/app.py
 +++ b/app.py
-@@ -708,69 +708,72 @@ def _normalize_model_for_chat(m: str) -> str:
+@@ -708,72 +708,72 @@ def _normalize_model_for_chat(m: str) -> str:
  class LLMProvider:
      def __init__(self, provider: str, model: str, api_key: str = "", timeout: int = 60, max_retries: int = 3):
          self.provider = provider
@@ -29,11 +29,10 @@ index d841a2194de10a4ab5eee3d2e238af88902acd55..063f5b9986e5c4cbc3d25d57d64dc89b
              "- 'subtopics'\n"
              "- 'source_url'\n"
              "Use these verbatim texts to make precise mappings. Prefer precision over breadth. "
--            "Justify each mapping with a short rationale referencing visible content, and select matching I-statements or subtopics."
--            " Return ONLY a JSON object per the schema."
-+            "Justify each mapping with a short rationale referencing visible content, and indicate matches for the 'we_statement' and "
-+            "the 'what_this_quality_statement_means' block in addition to selecting matching I-statements or subtopics. "
-+            "Return ONLY a JSON object per the schema."
+-            "Justify each mapping with a short rationale referencing visible content, and indicate matches for the 'we_statement' and "
++            "Justify each mapping with a short rationale referencing visible content, and include the exact matching text for the 'we_statement' and "
+             "the 'what_this_quality_statement_means' block in addition to selecting matching I-statements or subtopics. "
+             "Return ONLY a JSON object per the schema."
          )
          schema_and_options = {
              "schema": {
@@ -51,8 +50,10 @@ index d841a2194de10a4ab5eee3d2e238af88902acd55..063f5b9986e5c4cbc3d25d57d64dc89b
                                  "rationale": {"type": "string"},
                                  "matched_i_statements": {"type": "array", "items": {"type": "string"}},
                                  "matched_subtopics": {"type": "array", "items": {"type": "string"}},
-+                                "matched_we_statement": {"type": "boolean"},
-+                                "matched_what_it_means": {"type": "boolean"},
+-                                "matched_we_statement": {"type": "boolean"},
+-                                "matched_what_it_means": {"type": "boolean"},
++                                "matched_we_statement": {"type": "string"},
++                                "matched_what_it_means": {"type": "string"},
                              },
                              "required": ["id", "confidence"],
                          },
@@ -79,11 +80,10 @@ index d841a2194de10a4ab5eee3d2e238af88902acd55..063f5b9986e5c4cbc3d25d57d64dc89b
          headers = {"Authorization": f"Bearer {self.api_key or os.getenv('OPENAI_API_KEY','')}", "Content-Type": "application/json"}
  
 diff --git a/app.py b/app.py
-index d841a2194de10a4ab5eee3d2e238af88902acd55..063f5b9986e5c4cbc3d25d57d64dc89be1ac9839 100644
+index cc2ea5fbb0ed771cdf92f26219e1cfb87f01c989..881e0316b5800644610c29319c2bb2659db0b8e5 100644
 --- a/app.py
 +++ b/app.py
-@@ -1124,59 +1127,65 @@ if result:
-                         or "_(none)_"
+@@ -1128,63 +1128,78 @@ if result:
                      )
                  with tabs[2]:
                      i_list = qs.get("i_statements") or []
@@ -108,8 +108,11 @@ index d841a2194de10a4ab5eee3d2e238af88902acd55..063f5b9986e5c4cbc3d25d57d64dc89b
                  with tabs[5]:
                      mi = q.get("matched_i_statements") or []
                      ms = q.get("matched_subtopics") or []
-+                    mw = q.get("matched_we_statement")
-+                    mm = q.get("matched_what_it_means") or q.get("matched_what_this_quality_statement_means")
+                     mw = q.get("matched_we_statement")
+-                    mm = q.get("matched_what_it_means") or q.get("matched_what_this_quality_statement_means")
++                    mm = q.get("matched_what_it_means") or q.get(
++                        "matched_what_this_quality_statement_means"
++                    )
                      if mi:
                          st.write("**Matched I statements:**")
                          for s in mi:
@@ -118,12 +121,26 @@ index d841a2194de10a4ab5eee3d2e238af88902acd55..063f5b9986e5c4cbc3d25d57d64dc89b
                          st.write("**Matched subtopics:**")
                          for s in ms:
                              st.write(f"- {s}")
--                    if not mi and not ms:
-+                    if mw:
-+                        st.write("**We statement matched**")
-+                    if mm:
-+                        st.write("**'What it means' matched**")
-+                    if not mi and not ms and not mw and not mm:
+                     if mw:
+-                        st.write("**We statement matched**")
++                        st.write("**Matched we statement:**")
++                        if isinstance(mw, str):
++                            st.write(mw)
++                        else:
++                            st.write(qs.get("we_statement", ""))
+                     if mm:
+-                        st.write("**'What it means' matched**")
++                        st.write("**Matched 'what it means':**")
++                        if isinstance(mm, str):
++                            st.write(mm)
++                        else:
++                            st.write(
++                                qs.get(
++                                    "what_this_quality_statement_means",
++                                    qs.get("what this quality statement means", ""),
++                                )
++                            )
+                     if not mi and not ms and not mw and not mm:
                          st.write("_(none returned by model)_")
  
          default_ids = [q.get("id") for q in sugg_qs if q.get("id") in qs_map]
@@ -148,7 +165,6 @@ index d841a2194de10a4ab5eee3d2e238af88902acd55..063f5b9986e5c4cbc3d25d57d64dc89b
          signed_off = st.checkbox("I confirm the above classification and approve filing.")
          reviewer = st.text_input("Your name for the audit log", value=os.getenv("USER", "Reviewer"))
          col1, col2 = st.columns([1,1])
-         with col1:
  
 EOF
 )

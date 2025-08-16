@@ -1,0 +1,37 @@
+ (cd "$(git rev-parse --show-toplevel)" && git apply --3way <<'EOF' 
+diff --git a/app.py b/app.py
+index d841a2194de10a4ab5eee3d2e238af88902acd55..063f5b9986e5c4cbc3d25d57d64dc89be1ac9839 100644
+--- a/app.py
++++ b/app.py
+@@ -708,69 +708,72 @@ def _normalize_model_for_chat(m: str) -> str:
+ class LLMProvider:
+     def __init__(self, provider: str, model: str, api_key: str = "", timeout: int = 60, max_retries: int = 3):
+         self.provider = provider
+         self.model = model
+         self.api_key = api_key
+         self.timeout = timeout
+         self.max_retries = max_retries
+         self.llm_image_max_width = 1024
+         self.auto_fallback = True
+         self.fallback_model = "gpt-5-mini"
+ 
+     def classify_images(self, images: List[Image.Image], taxonomy: Dict[str, Any], max_images: int = 4) -> Dict[str, Any]:
+         qs_brief = build_qs_brief(taxonomy)
+         cats = taxonomy.get("evidence_categories", [])
+         system_prompt = (
+             "You are a compliance assistant for a CQC-regulated care service.\n"
+             "You will be given image(s) of an evidence item (scan/photo). Map it to one or more CQC Quality Statements "
+             "and to the main Evidence Category.\n\n"
+             "GROUNDING MATERIAL provided for each Quality Statement includes:\n"
+             "- 'we_statement' (verbatim)\n"
+             "- 'what_this_quality_statement_means' (verbatim)\n"
+             "- 'i_statements'\n"
+             "- 'subtopics'\n"
+             "- 'source_url'\n"
+             "Use these verbatim texts to make precise mappings. Prefer precision over breadth. "
+-            "Justify each mapping with a short rationale referencing visible content, and select matching I-statements or subtopics."
+-            " Return ONLY a JSON object per the schema."
++            "Justify each mapping with a short rationale referencing visible content, and indicate matches for the 'we_statement' and "
++            "the 'what_this_quality_statement_means' block in addition to selecting matching I-statements or subtopics. "
++            "Return ONLY a JSON object per the schema."
+         )

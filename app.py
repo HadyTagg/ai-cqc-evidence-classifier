@@ -730,7 +730,7 @@ class LLMProvider:
             "- 'subtopics'\n"
             "- 'source_url'\n"
             "Use these verbatim texts to make precise mappings. Prefer precision over breadth. "
-            "Justify each mapping with a short rationale referencing visible content, and indicate matches for the 'we_statement' and "
+            "Justify each mapping with a short rationale referencing visible content, and include the exact matching text for the 'we_statement' and "
             "the 'what_this_quality_statement_means' block in addition to selecting matching I-statements or subtopics. "
             "Return ONLY a JSON object per the schema."
         )
@@ -750,8 +750,8 @@ class LLMProvider:
                                 "rationale": {"type": "string"},
                                 "matched_i_statements": {"type": "array", "items": {"type": "string"}},
                                 "matched_subtopics": {"type": "array", "items": {"type": "string"}},
-                                "matched_we_statement": {"type": "boolean"},
-                                "matched_what_it_means": {"type": "boolean"},
+                                "matched_we_statement": {"type": "string"},
+                                "matched_what_it_means": {"type": "string"},
                             },
                             "required": ["id", "confidence"],
                         },
@@ -1150,7 +1150,9 @@ if result:
                     mi = q.get("matched_i_statements") or []
                     ms = q.get("matched_subtopics") or []
                     mw = q.get("matched_we_statement")
-                    mm = q.get("matched_what_it_means") or q.get("matched_what_this_quality_statement_means")
+                    mm = q.get("matched_what_it_means") or q.get(
+                        "matched_what_this_quality_statement_means"
+                    )
                     if mi:
                         st.write("**Matched I statements:**")
                         for s in mi:
@@ -1160,9 +1162,22 @@ if result:
                         for s in ms:
                             st.write(f"- {s}")
                     if mw:
-                        st.write("**We statement matched**")
+                        st.write("**Matched we statement:**")
+                        if isinstance(mw, str):
+                            st.write(mw)
+                        else:
+                            st.write(qs.get("we_statement", ""))
                     if mm:
-                        st.write("**'What it means' matched**")
+                        st.write("**Matched 'what it means':**")
+                        if isinstance(mm, str):
+                            st.write(mm)
+                        else:
+                            st.write(
+                                qs.get(
+                                    "what_this_quality_statement_means",
+                                    qs.get("what this quality statement means", ""),
+                                )
+                            )
                     if not mi and not ms and not mw and not mm:
                         st.write("_(none returned by model)_")
 
