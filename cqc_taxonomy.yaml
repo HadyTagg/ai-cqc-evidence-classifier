@@ -10,6 +10,84 @@ evidence_categories:
 - Observation
 - Processes
 - Outcomes
+evidence_category_descriptions:
+  "People's experience of health and care services": |-
+    This is all types of evidence from people who have experience relating to a specific health or care service, or a pathway across services. It also includes evidence from families, carers and advocates for people who use services.
+
+    We define people’s experiences as:
+
+    “a person’s needs, expectations, lived experience and satisfaction with their care, support and treatment. This includes access to and transfers between services”.
+
+    Evidence from people’s experience of care includes:
+    - phone calls, emails and Give feedback on care forms received by CQC
+    - interviews with people and local organisations who represent them or act on their behalf
+    - survey results.
+    - feedback from the public and people who use services obtained by:
+      - community and voluntary groups
+      - health and care providers
+      - local authorities
+      - groups representing:
+        - people who are more likely to have a poorer experience of care and poorer outcomes
+        - people with protected equality characteristics
+        - unpaid carers
+  "Feedback from staff and leaders": |-
+    This is evidence from people who work in a service, local authority or integrated care system, and groups of staff involved in providing care to people.
+
+    It also includes evidence from those in leadership positions.
+
+    This includes, for example:
+    - results from staff surveys and feedback from staff to their employer
+    - individual interviews or focus groups with staff
+    - interviews with leaders
+    - feedback from people working in a service sent through our Give feedback on care service
+    - whistleblowing
+  "Feedback from partners": |-
+    This is evidence from people representing organisations that interact with the service or organisation that is being assessed.
+
+    We may gather evidence through interviews and engagement events.
+
+    The organisations include, for example:
+    - commissioners
+    - other local providers
+    - professional regulators
+    - accreditation bodies
+    - royal colleges
+    - multi-agency bodies.
+  Observation: |-
+    Observing care and the care environment will remain an important way to assess quality.
+
+    Most observation will be carried out on the premises by CQC inspectors and Specialist Professional Advisors (SpAs).
+
+    External bodies may also carry out observations of care and provide evidence, for example, Local Healthwatch. Where the evidence from organisations such as Healthwatch is specifically about observation of the care environment, we will include it in this category, and not in the people’s experiences category.
+
+    We will not use the observation category for local authority assessments. It does not apply to a local authority context.
+
+    All observation is carried out on site.
+  Processes: |-
+    Processes are the series of steps, arrangements or activities that a provider or organisation carries out to deliver safe care that meets people's needs.
+
+    Our assessments focus on how effective processes are to the relevant quality statement.
+
+    To do this, we will look at information and data sources that measure how well processes work. Examples of evidence for processes include:
+    - results from audits a provider has developed or from national programmes (for example, the National Clinical Audit and Patient Outcomes Programme)
+    - findings and learning from safety incidents
+    - access times for treatment and care
+    - case note reviews of people's care or clinical records.
+  Outcomes: |-
+    Outcomes are focused on the impact of care processes on individuals. They cover how care has affected people’s physical, functional or psychological status.
+
+    We consider outcomes measures in context of the service and the specifics of the measure.
+
+    Some examples of outcome measures are:
+    - mortality rates
+    - emergency admissions and re-admission rates to hospital
+    - infection control rates
+    - vaccination and prescribing data.
+
+    We source the information from:
+    - patient level data sets
+    - national clinical audits
+    - initiatives such as the patient reported outcome measures (PROMs) programme.
 quality_statements:
 - id: S01
   domain: Safe

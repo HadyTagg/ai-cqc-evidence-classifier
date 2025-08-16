@@ -718,7 +718,7 @@ class LLMProvider:
 
     def classify_images(self, images: List[Image.Image], taxonomy: Dict[str, Any], max_images: int = 4) -> Dict[str, Any]:
         qs_brief = build_qs_brief(taxonomy)
-        cats = taxonomy.get("evidence_categories", [])
+        cats_brief = build_evidence_category_brief(taxonomy)
         system_prompt = (
             "You are a compliance assistant for a CQC-regulated care service.\n"
             "You will be given image(s) of an evidence item (scan/photo). Map it to one or more CQC Quality Statements "
@@ -762,7 +762,7 @@ class LLMProvider:
                 "required": ["quality_statements", "evidence_categories"],
             },
             "quality_statements_options": qs_brief,
-            "evidence_categories_options": cats,
+            "evidence_categories_options": cats_brief,
         }
         content = [{"type": "text", "text": json.dumps(schema_and_options)}]
         max_w = getattr(self, "llm_image_max_width", 1024)
@@ -859,12 +859,17 @@ def build_qs_brief(taxonomy: Dict[str, Any]) -> List[Dict[str, Any]]:
         })
     return out
 
+def build_evidence_category_brief(taxonomy: Dict[str, Any]) -> List[Dict[str, str]]:
+    cats = taxonomy.get("evidence_categories", [])
+    desc = taxonomy.get("evidence_category_descriptions", {})
+    return [{"name": c, "description": desc.get(c, "")} for c in cats]
+
 # ---------------------
 # UI
 # ---------------------
 st.set_page_config(page_title=APP_TITLE, layout="wide")
 st.title(APP_TITLE)
-st.caption("Spreadsheets are now rendered visually (LibreOffice → PDF → images) for classification. Email previews improved (mono font + supersampling).")
+st.caption("AI Powered CQC Evidence Classifier")
 
 with st.sidebar:
     st.header("Settings")
@@ -1040,7 +1045,7 @@ with colB:
                 email_font_size=int(email_font_size),
                 email_supersample=int(email_supersample),
             )
-            st.markdown(f"**Preview (images): {file_selected.name}**")
+            st.markdown(f"**Preview: {file_selected.name}**")
             st.image(images, caption=[f"image {i+1}" for i in range(len(images))], use_container_width=True)
         except Exception as e:
             st.error(f"Preview error: {e}")
