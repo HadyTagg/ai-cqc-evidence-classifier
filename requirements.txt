@@ -27,3 +27,13 @@ pillow-heif>=0.16.0   # HEIC/HEIF image support (common in iOS photos)
 # Email Parsing
 # =========================================
 extract-msg>=0.48.6   # Extract content/attachments from Outlook .msg email files
+
+
+# Core converters used by the app
+sudo apt install -y libreoffice poppler-utils
+
+# Fonts (for crisp email previews + monospace options)
+sudo apt install -y fonts-dejavu-core fonts-liberation fonts-noto-core fonts-noto-mono
+
+# Optional: HEIC support (only if pillow-heif complains about missing libheif)
+sudo apt install -y libheif1

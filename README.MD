@@ -1,8 +1,8 @@
-# Core converters used by the app
-sudo apt install -y libreoffice poppler-utils
+How the classifier processes evidence
+Only preview images are sent to the LLM. Each document is rasterized into images, but the program limits both the number of pages converted and the images forwarded to the model (max_pages and max_images, defaults of 2 and 4 respectively)
 
-# Fonts (for crisp email previews + monospace options)
-sudo apt install -y fonts-dejavu-core fonts-liberation fonts-noto-core fonts-noto-mono
+All documents are transformed into images before classification. PDFs are rendered with pdf2image; DOCX files are converted to PDF then rendered, or, if conversion fails, their text is rendered into an image; emails and plain text files are similarly converted to image form via text_to_image. This ensures the model always receives images, even for originally textual sources
 
-# Optional: HEIC support (only if pillow-heif complains about missing libheif)
-sudo apt install -y libheif1
+Meaning of “matched” fields. The model is asked to return, for each suggested quality statement, the identifiers plus any matching “I statements,” subtopics, and verbatim text from the taxonomy. These fields (matched_i_statements, matched_subtopics, matched_we_statement, matched_what_it_means) are supplied alongside a separate numeric confidence score, so the matches serve as justification rather than the sole determinant of confidence or final selection
+
+Selecting evidence categories and quality statements. Before calling the model, the app extracts structured options from the taxonomy—build_qs_brief and build_evidence_category_brief—and embeds them in the prompt. The LLM uses these options, together with the preview images, to choose appropriate evidence categories and quality statements
