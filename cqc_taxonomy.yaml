@@ -16,9 +16,8 @@ quality_statements:
   title: Learning culture
   we_statement: |-
     We expect providers, commissioners and system leaders live up to this statement: We have a proactive and positive culture of safety based on openness and honesty, in which concerns about safety are listened to, safety events are investigated and reported thoroughly, and lessons are learned to continually identify and embed good practices.
-  we_explanation: ''
   what_this_quality_statement_means: |
-    including staff as well as people using the service. There is a culture of safety
+        - Safety is a top priority that involves everyone, including staff as well as people using the service. There is a culture of safety
         and learning. This is based on openness, transparency and learning from events
         that have either put people and staff at risk of harm, or that have caused them
         harm.
@@ -51,9 +50,8 @@ quality_statements:
   title: Safe systems, pathways and transitions
   we_statement: |-
     We expect providers, commissioners and system leaders live up to this statement: We work with people and our partners to establish and maintain safe systems of care, in which safety is managed, monitored and assured. We ensure continuity of care, including when people move between different services.
-  we_explanation: ''
   what_this_quality_statement_means: |
-    throughout people’s care journey. This happens through a collaborative, joined-up
+        - Safety and continuity of care is a priority throughout people’s care journey. This happens through a collaborative, joined-up
         approach to safety that involves them along with staff and other partners in their
         care. This includes referrals, admissions and discharge, and where people are
         moving between services.
@@ -86,9 +84,8 @@ quality_statements:
   title: Safeguarding
   we_statement: |-
     We expect providers, commissioners and system leaders live up to this statement: We work with people to understand what being safe means to them as well as with our partners on the best way to achieve this. We concentrate on improving people’s lives while protecting their right to live in safety, free from bullying, harassment, abuse, discrimination, avoidable harm and neglect. We make sure we share concerns quickly and appropriately.
-  we_explanation: ''
   what_this_quality_statement_means: |
-    and how to take appropriate action.
+        - There is a strong understanding of safeguarding and how to take appropriate action.
 
         - People are supported to understand safeguarding, what being safe means to them,
         and how to raise concerns when they don’t feel safe, or they have concerns about
@@ -123,15 +120,15 @@ quality_statements:
   - Closed cultures
   - Harassment and abuse (and in the community)
   - Sexual safety and empowerment
+  - Duty of Candour
   source_url: https://www.cqc.org.uk/guidance-regulation/providers/assessment/single-assessment-framework/safe/safeguarding
 - id: S04
   domain: Safe
   title: Involving people to manage risks
   we_statement: |-
     We expect providers, commissioners and system leaders live up to this statement: We work with people to understand and manage risks by thinking holistically so that care meets their needs in a way that is safe and supportive and enables them to do the things that matter to them.
-  we_explanation: ''
   what_this_quality_statement_means: |
-    to keep themselves safe.
+        - People are informed about any risks and how to keep themselves safe.
 
         - Risks are assessed, and people and staff understand them.
 
@@ -172,9 +169,8 @@ quality_statements:
   title: Safe environments
   we_statement: |-
     We expect providers, commissioners and system leaders live up to this statement: We detect and control potential risks in the care environment. We make sure that the equipment, facilities and technology support the delivery of safe care.
-  we_explanation: ''
   what_this_quality_statement_means: |
-    that are designed to meet their needs.
+        - People are cared for in safe environments that are designed to meet their needs.
 
         - Facilities, equipment and technology are well-maintained and consistently support
         staff to deliver safe and effective care.
@@ -194,15 +190,15 @@ quality_statements:
   - Equipment
   - Environmental risks (adverse weather such as heatwaves and flooding)
   - Digital systems/technology assurance
+  - Staff safety (e.g. risks in the homes of people who use services)
   source_url: https://www.cqc.org.uk/guidance-regulation/providers/assessment/single-assessment-framework/safe/safe-environments
 - id: S06
   domain: Safe
   title: Safe and effective staffing
   we_statement: |-
     We expect providers, commissioners and system leaders live up to this statement: We make sure there are enough qualified, skilled and experienced people, who receive effective support, supervision and development. They work together effectively to provide safe care that meets people’s individual needs.
-  we_explanation: ''
   what_this_quality_statement_means: |
-    to make sure that all staff, including agency staff and volunteers, are suitably
+        - There are robust and safe recruitment practices to make sure that all staff, including agency staff and volunteers, are suitably
         experienced, competent and able to carry out their role.
 
         - Recruitment, disciplinary and capability processes are fair and are reviewed
@@ -242,9 +238,8 @@ quality_statements:
   title: Infection prevention and control
   we_statement: |-
     We expect providers, commissioners and system leaders live up to this statement: We assess and manage the risk of infection. We detect and control the risk of it spreading and share any concerns with appropriate agencies promptly.
-  we_explanation: ''
   what_this_quality_statement_means: |
-    and managing the risk of infection, which is in line with current relevant national
+        - There is an effective approach to assessing and managing the risk of infection, which is in line with current relevant national
         guidance.
 
         - People are protected as much as possible from the risk of infection because
@@ -272,9 +267,8 @@ quality_statements:
   title: Medicines optimisation
   we_statement: |-
     We expect providers, commissioners and system leaders live up to this statement: We make sure that medicines and treatments are safe and meet people’s needs, capacities and preferences by enabling them to be involved in planning, including when changes happen.
-  we_explanation: ''
   what_this_quality_statement_means: |
-    about their medicines.
+        - People are appropriately involved in decisions about their medicines.
 
         - People are involved with assessments and reviews about the level of support
         they need to manage their medicines safely and to make sure their preferences
@@ -319,9 +313,8 @@ quality_statements:
   title: Assessing needs
   we_statement: |-
     We expect providers, commissioners and system leaders live up to this statement: We maximise the effectiveness of people’s care and treatment by assessing and reviewing their health, care, wellbeing and communication needs with them.
-  we_explanation: ''
   what_this_quality_statement_means: |
-    needs, and support is provided where needed to maximise their involvement.
+        - People are involved in the assessment of their needs, and support is provided where needed to maximise their involvement.
 
         - People are confident that their individual needs have been appropriately assessed
         and are fully understood.
@@ -362,9 +355,8 @@ quality_statements:
   title: Delivering evidence-based care and treatment
   we_statement: |-
     We expect providers, commissioners and system leaders live up to this statement: We plan and deliver people’s care and treatment with them, including what is important and matters to them. We do this in line with legislation and current evidence-based good practice and standards.
-  we_explanation: ''
   what_this_quality_statement_means: |
-    that is evidence-based and in line with good practice standards.
+        - People receive care, treatment and support that is evidence-based and in line with good practice standards.
 
         - The provider’s systems ensure that staff are up-to-date with national legislation,
         evidence-based good practice and required standards.
@@ -394,9 +386,8 @@ quality_statements:
   title: How staff and teams work together
   we_statement: |-
     We expect providers, commissioners and system leaders live up to this statement: We work effectively across teams and services to support people. We make sure they only need to tell their story once by sharing their assessment of needs when they move between different services.
-  we_explanation: ''
   what_this_quality_statement_means: |
-    need to appropriately assess, plan and deliver people’s care, treatment and support.
+        - Staff have access to the information they need to appropriately assess, plan and deliver people’s care, treatment and support.
 
         - Plans for transition, referral and discharge consider people’s individual needs,
         circumstances, ongoing care arrangements and expected outcomes.
@@ -428,9 +419,8 @@ quality_statements:
   title: Supporting people to live healthier lives
   we_statement: |-
     We expect providers, commissioners and system leaders live up to this statement: We support people to manage their health and wellbeing so they can maximise their independence, choice and control. We support them to live healthier lives and where possible, reduce their future needs for care and support.
-  we_explanation: ''
   what_this_quality_statement_means: |
-    their own health, care and wellbeing needs by staff who understand their needs
+        - People are empowered and supported to manage their own health, care and wellbeing needs by staff who understand their needs
         and preferences.
 
         - People are involved in regularly reviewing their health and wellbeing needs
@@ -464,9 +454,8 @@ quality_statements:
   title: Monitoring and improving outcomes
   we_statement: |-
     We expect providers, commissioners and system leaders live up to this statement: We routinely monitor people’s care and treatment to continuously improve it. We ensure that outcomes are positive and consistent, and that they meet both clinical expectations and the expectations of people themselves.
-  we_explanation: ''
   what_this_quality_statement_means: |
-    positive outcomes. These meet agreed expectations as set out in legislation, standards
+        - People who use the service consistently experience positive outcomes. These meet agreed expectations as set out in legislation, standards
         and evidence-based clinical guidance.
 
         - There are effective approaches to monitor people’s care and treatment and their
@@ -489,9 +478,8 @@ quality_statements:
   title: Consent to care and treatment
   we_statement: |-
     We expect providers, commissioners and system leaders live up to this statement: We tell people about their rights around consent and respect these when we deliver person-centred care and treatment.
-  we_explanation: ''
   what_this_quality_statement_means: |
-    to the care and treatment they are offered.
+        - People understand their rights around consent to the care and treatment they are offered.
 
         - People’s views and wishes are taken into account when their care is planned.
 
@@ -523,10 +511,10 @@ quality_statements:
 - id: C15
   domain: Caring
   title: Kindness, compassion and dignity
-  we_statement: ''
-  we_explanation: ''
+  we_statement: |- 
+    We always treat people with kindness, empathy and compassion and we respect their privacy and dignity. We treat colleagues from other organisations with kindness and respect.
   what_this_quality_statement_means: |
-    compassion and dignity in their day-to-day care and support.
+        - People feel they are treated with kindness, compassion and dignity in their day-to-day care and support.
 
         - People feel that staff listen to them and communicate with them appropriately,
         in a way they can understand.
@@ -557,10 +545,10 @@ quality_statements:
 - id: C16
   domain: Caring
   title: Treating people as individuals
-  we_statement: ''
-  we_explanation: ''
+  we_statement: |- 
+    We treat people as individuals and make sure their care, support and treatment meets their needs and preferences. We take account of their strengths, abilities, aspirations, culture and unique backgrounds and protected characteristics.
   what_this_quality_statement_means: |
-    are understood and these are reflected in their care, treatment and support.
+        - People’s individual needs and preferences are understood and these are reflected in their care, treatment and support.
 
         - People’s personal, cultural, social and religious needs are understood and met.
 
@@ -587,9 +575,8 @@ quality_statements:
   title: Independence, choice and control
   we_statement: |-
     We expect providers, commissioners and system leaders live up to this statement: We promote people’s independence, so they know their rights and have choice and control over their own care, treatment and wellbeing.
-  we_explanation: ''
   what_this_quality_statement_means: |
-    over their own care and to make decisions about their care, treatment and wellbeing.
+        - People are supported to have choice and control over their own care and to make decisions about their care, treatment and wellbeing.
 
         - People are supported to understand their rights by using different ways to communicate.
         Their understanding is reviewed throughout their care and treatment.
@@ -628,9 +615,8 @@ quality_statements:
   title: Responding to people’s immediate needs
   we_statement: |-
     We expect providers, commissioners and system leaders live up to this statement: We listen to and understand people’s needs, views and wishes. We respond to these in that moment and will act to minimise any discomfort, concern or distress.
-  we_explanation: ''
   what_this_quality_statement_means: |
-    are a priority and staff quickly anticipate these to avoid any preventable discomfort,
+        - People’s needs, views, wishes and comfort are a priority and staff quickly anticipate these to avoid any preventable discomfort,
         concern or distress.
 
         - Staff are alert to people’s needs and take time to observe, communicate and
@@ -652,9 +638,8 @@ quality_statements:
   title: Workforce wellbeing and enablement
   we_statement: |-
     We expect providers, commissioners and system leaders live up to this statement: We care about and promote the wellbeing of our staff, and we support and enable them to always deliver person centred care.
-  we_explanation: ''
   what_this_quality_statement_means: |
-    care as the provider recognises and meets the wellbeing needs of staff. These
+        - People receive safe, effective and person-centred care as the provider recognises and meets the wellbeing needs of staff. These
         include the necessary resource and facilities for safe working, such as regular
         breaks and rest areas.
 
@@ -691,9 +676,8 @@ quality_statements:
   title: Person-centred care
   we_statement: |-
     We expect providers, commissioners and system leaders live up to this statement: We make sure people are at the centre of their care and treatment choices and we decide, in partnership with them, how to respond to any relevant changes in their needs.
-  we_explanation: ''
   what_this_quality_statement_means: |
-    mental, emotional and social needs, including those related to protected characteristics
+        - People’s care plans fully reflect their physical, mental, emotional and social needs, including those related to protected characteristics
         under the Equality Act.
 
         - People who use services and those close to them (including carers and dependants)
@@ -723,9 +707,8 @@ quality_statements:
   title: Care provision, integration and continuity
   we_statement: |-
     We expect providers, commissioners and system leaders live up to this statement: We understand the diverse health and care needs of people and our local communities, so care is joined-up, flexible and supports choice and continuity.
-  we_explanation: ''
   what_this_quality_statement_means: |
-    that understand the diverse health and social care needs of their local communities.
+        - People receive care and treatment from services that understand the diverse health and social care needs of their local communities.
 
         - There is continuity in people’s care and treatment because services are flexible
         and joined-up.
@@ -751,9 +734,8 @@ quality_statements:
   title: Providing information
   we_statement: |-
     We expect providers, commissioners and system leaders live up to this statement: We provide appropriate, accurate and up-to-date information in formats that we tailor to individual needs.
-  we_explanation: ''
   what_this_quality_statement_means: |
-    is accurate, up-to-date and provided in a way that they can understand and which
+        - People can get information and advice that is accurate, up-to-date and provided in a way that they can understand and which
         meets their communication needs.
 
         - People who use the service, their family, friends, and carers are provided with
@@ -801,10 +783,8 @@ quality_statements:
   title: Listening to and involving people
   we_statement: |-
     We expect providers, commissioners and system leaders live up to this statement: We make it easy for people to share feedback and ideas or raise complaints about their care, treatment and support. We involve them in decisions about their care and tell them what’s changed as a result.
-  we_explanation: ''
   what_this_quality_statement_means: |
-    experiences of care and support including how to raise any concerns or issues
-        and can do so in a range of accessible ways.
+        - People know how to give feedback about their experiences of care and support including how to raise any concerns or issues and can do so in a range of accessible ways.
 
         - People, their family, friends and other carers feel confident that if they complain,
         they will be taken seriously and treated compassionately.
@@ -837,10 +817,8 @@ quality_statements:
   title: Equity in access
   we_statement: |-
     We expect providers, commissioners and system leaders live up to this statement: We make sure that everyone can access the care, support and treatment they need when they need it.
-  we_explanation: ''
   what_this_quality_statement_means: |
-    when they need to and in a way that works for them, which promotes equality, removes
-        barriers or delays and protects their rights.
+        - People can access care, treatment and support when they need to and in a way that works for them, which promotes equality, removes barriers or delays and protects their rights.
 
         - People can expect their care, treatment and support to be accessible, timely
         and in line with best practice, quality standards and legal requirements, including
@@ -890,9 +868,8 @@ quality_statements:
   title: Equity in experiences and outcomes
   we_statement: |-
     We expect providers, commissioners and system leaders live up to this statement: We actively seek out and listen to information about people who are most likely to experience inequality in experience or outcomes. We tailor the care, support and treatment in response to this.
-  we_explanation: ''
   what_this_quality_statement_means: |
-    equality, removes barriers or delays and protects their rights.
+        - People’s care, treatment and support promotes equality, removes barriers or delays and protects their rights.
 
         - People feel empowered by providers and staff to give their views and understand
         their rights, including their rights to equality and their human rights.
@@ -928,10 +905,8 @@ quality_statements:
   title: Planning for the future
   we_statement: |-
     We expect providers, commissioners and system leaders live up to this statement: We support people to plan for important life changes, so they can have enough time to make informed decisions about their future, including at the end of their life.
-  we_explanation: ''
   what_this_quality_statement_means: |
-    about their care and plan their future care while they have the capacity to do
-        so.
+        - People are supported to make informed choices about their care and plan their future care while they have the capacity to do so.
 
         - People who may be approaching the end of their life are identified (including
         those with protected characteristics under the Equality Act and people whose circumstances
@@ -968,10 +943,8 @@ quality_statements:
   title: Shared direction and culture
   we_statement: |-
     We have a shared vision, strategy and culture. This is based on transparency, equity, equality and human rights, diversity and inclusion, engagement, and understanding challenges and the needs of people and our communities in order to meet these.
-  we_explanation: ''
   what_this_quality_statement_means: |
-    strategy and that staff in all areas know, understand and support the vision,
-        values and strategic goals and how their role helps in achieving them.
+        - Leaders ensure there is a shared vision and strategy and that staff in all areas know, understand and support the vision, values and strategic goals and how their role helps in achieving them.
 
         - Staff and leaders ensure that the vision, values and strategy have been developed
         through a structured planning process in collaboration with people who use the
@@ -1002,10 +975,8 @@ quality_statements:
   title: Capable, compassionate and inclusive leaders
   we_statement: |-
     We have inclusive leaders at all levels who understand the context in which we deliver care, treatment and support and embody the culture and values of their workforce and organisation. They have the skills, knowledge, experience and credibility to lead effectively. They do so with integrity, openness and honesty.
-  we_explanation: ''
   what_this_quality_statement_means: |
-    and integrity to ensure that the organisational vision can be delivered and risks
-        are well managed.
+        - Leaders have the experience, capacity, capability and integrity to ensure that the organisational vision can be delivered and risks are well managed.
 
         - Leaders at every level are visible and lead by example, modelling inclusive
         behaviours.
@@ -1031,10 +1002,9 @@ quality_statements:
   title: Freedom to speak up
   we_statement: |-
     We foster a positive culture where people feel that they can speak up and that their voice will be heard.
-  we_explanation: ''
   what_this_quality_statement_means: |
-    and transparency.
-
+        - Staff and leaders act with openness, honesty and transparency.
+        
         - Staff and leaders actively promote staff empowerment to drive improvement. They
         encourage staff to raise concerns and promote the value of doing so. All staff
         are confident that their voices will be heard.
@@ -1058,10 +1028,8 @@ quality_statements:
   title: Workforce equality, diversity and inclusion
   we_statement: |-
     We value diversity in our workforce. We work towards an inclusive and fair culture by improving equality and equity for people who work for us.
-  we_explanation: ''
   what_this_quality_statement_means: |
-    and improve the culture of the organisation in the context of equality, diversity
-        and inclusion.
+        - Leaders take action to continually review and improve the culture of the organisation in the context of equality, diversity and inclusion.
 
         - Leaders take action to improve where there are any disparities in the experience
         of staff with protected equality characteristics, or those from excluded and marginalised
@@ -1104,10 +1072,8 @@ quality_statements:
   title: Governance, management and sustainability
   we_statement: |-
     We have clear responsibilities, roles, systems of accountability and good governance. We use these to manage and deliver good quality, sustainable care, treatment and support. We act on the best information about risk, performance and outcomes, and we share this securely with others when appropriate.
-  we_explanation: ''
   what_this_quality_statement_means: |
-    management and accountability arrangements. Staff understand their role and responsibilities.
-        Managers can account for the actions, behaviours and performance of staff.
+        - There are clear and effective governance, management and accountability arrangements. Staff understand their role and responsibilities. Managers can account for the actions, behaviours and performance of staff.
 
         - The systems to manage current and future performance and risks to the quality
         of the service take a proportionate approach to managing risk that allows new
@@ -1141,9 +1107,8 @@ quality_statements:
   title: Partnerships and communities
   we_statement: |-
     We understand our duty to collaborate and work in partnership, so our services work seamlessly for people. We share information and learning with partners and collaborate for improvement.
-  we_explanation: ''
   what_this_quality_statement_means: |
-    and they collaborate with all relevant external stakeholders and agencies.
+        - Staff and leaders are open and transparent, and they collaborate with all relevant external stakeholders and agencies.
 
         - Staff and leaders work in partnership with key organisations to support care
         provision, service development and joined-up care.
@@ -1163,11 +1128,9 @@ quality_statements:
   title: Learning, improvement and innovation
   we_statement: |-
     We focus on continuous learning, innovation and improvement across our organisation and the local system. We encourage creative ways of delivering equality of experience, outcome and quality of life for people. We actively contribute to safe, effective practice and research
-  we_explanation: ''
   what_this_quality_statement_means: |
-    of how to make improvement happen. The approach is consistent and includes measuring
-        outcomes and impact.
-
+        - Staff and leaders have a good understanding of how to make improvement happen. The approach is consistent and includes measuring outcomes and impact.
+        
         - Staff and leaders ensure that people using the service, their families and carers
         are involved in developing and evaluating improvement and innovation initiatives.
 
@@ -1197,10 +1160,8 @@ quality_statements:
   title: Environmental sustainability and sustainable development
   we_statement: |-
     We understand any negative impact of our activities on the environment and we strive to make a positive contribution in reducing it and support people to do the same.
-  we_explanation: ''
   what_this_quality_statement_means: |
-    change is a significant threat to the health of people who use services, their
-        staff, and the wider population.
+        - Staff and leaders understand that climate change is a significant threat to the health of people who use services, their staff, and the wider population.
 
         - Staff and leaders empower their staff to understand sustainable healthcare and
         how to reduce the environmental impact of healthcare activity.

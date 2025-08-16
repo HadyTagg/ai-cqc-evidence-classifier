@@ -1,21 +1,29 @@
-# App runtime
-streamlit>=1.36
-pandas>=2.2
-PyYAML>=6.0
+# =========================================
+# App Runtime
+# =========================================
+streamlit>=1.36       # Web app framework for interactive dashboards and tools
+pandas>=2.2           # Data analysis library for tabular data, CSVs, spreadsheets
+PyYAML>=6.0           # Read/write YAML config and taxonomy files
 
-# Document parsing
-python-docx>=1.1
-openpyxl>=3.1       # .xlsx/.xlsm reader for pandas
-xlrd>=2.0.1         # .xls reader for pandas
-beautifulsoup4>=4.12
-lxml>=5.2
-chardet>=5.2
-requests>=2.32
+# =========================================
+# Document Parsing
+# =========================================
+python-docx>=1.1      # Read/write Microsoft Word (.docx) documents
+openpyxl>=3.1         # Read/write Excel (.xlsx/.xlsm) files; used by pandas
+xlrd>=2.0.1           # Read legacy Excel (.xls) files; used by pandas
+beautifulsoup4>=4.12  # Parse and navigate HTML/XML documents
+lxml>=5.2             # High-performance HTML/XML parser (used by BeautifulSoup)
+chardet>=5.2          # Detect file character encoding (text, HTML, etc.)
+requests>=2.32        # HTTP client for downloading documents/web pages
 
-# Imaging / previews
-Pillow>=10.3
-pdf2image>=1.17.0   # requires poppler-utils on Linux
-pillow-heif>=0.16.0 # HEIC/HEIF preview support (optional)
+# =========================================
+# Imaging / Previews
+# =========================================
+Pillow>=10.3          # Image manipulation and creation (PIL fork)
+pdf2image>=1.17.0     # Convert PDF pages to images (requires poppler-utils on Linux)
+pillow-heif>=0.16.0   # HEIC/HEIF image support (common in iOS photos)
 
-# Email
-extract-msg>=0.48.6 # Outlook .msg support (optional)
+# =========================================
+# Email Parsing
+# =========================================
+extract-msg>=0.48.6   # Extract content/attachments from Outlook .msg email files

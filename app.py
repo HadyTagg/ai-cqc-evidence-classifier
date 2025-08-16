@@ -656,31 +656,6 @@ def propose_storage_paths(taxonomy: Dict[str, Any], qs_ids: List[str], categorie
             paths.append(path)
     return sorted(set(paths))
 
-# ---------- bullets parser ----------
-def parse_bullets(block: str) -> List[str]:
-    """Parse 'what_this_quality_statement_means' into a flat list of bullets."""
-    if not block:
-        return []
-    lines = [l.rstrip() for l in block.splitlines()]
-    bullets: List[str] = []
-    cur: List[str] = []
-    def flush():
-        if cur:
-            bullets.append(" ".join(" ".join(cur).split()))
-            cur.clear()
-    for l in lines:
-        stripped = l.strip()
-        if stripped.startswith("- "):
-            flush()
-            cur.append(stripped[2:])
-        elif stripped == "":
-            if cur:
-                cur.append("")
-        else:
-            cur.append(stripped)
-    flush()
-    return [b for b in bullets if b]
-
 # ---------------------
 # Simple JSON file cache for LLM results
 # ---------------------
@@ -750,14 +725,13 @@ class LLMProvider:
             "and to the main Evidence Category.\n\n"
             "GROUNDING MATERIAL provided for each Quality Statement includes:\n"
             "- 'we_statement' (verbatim)\n"
-            "- 'we_explanation' (verbatim)\n"
-            "- 'what_this_quality_statement_means' (verbatim block) and parsed 'means_bullets'\n"
+            "- 'what_this_quality_statement_means' (verbatim)\n"
             "- 'i_statements'\n"
             "- 'subtopics'\n"
             "- 'source_url'\n"
             "Use these verbatim texts to make precise mappings. Prefer precision over breadth. "
-            "Justify each mapping with a short rationale referencing visible content, and select matching I-statements, "
-            "subtopics, or 'means_bullets'. Return ONLY a JSON object per the schema."
+            "Justify each mapping with a short rationale referencing visible content, and select matching I-statements or subtopics."
+            " Return ONLY a JSON object per the schema."
         )
         schema_and_options = {
             "schema": {
@@ -775,7 +749,6 @@ class LLMProvider:
                                 "rationale": {"type": "string"},
                                 "matched_i_statements": {"type": "array", "items": {"type": "string"}},
                                 "matched_subtopics": {"type": "array", "items": {"type": "string"}},
-                                "matched_means_bullets": {"type": "array", "items": {"type": "string"}},
                             },
                             "required": ["id", "confidence"],
                         },
@@ -876,9 +849,7 @@ def build_qs_brief(taxonomy: Dict[str, Any]) -> List[Dict[str, Any]]:
             "domain": q.get("domain"),
             "title": q.get("title"),
             "we_statement": q.get("we_statement", ""),
-            "we_explanation": q.get("we_explanation", q.get("we explanation", "")),
             "what_this_quality_statement_means": means_block,
-            "means_bullets": parse_bullets(means_block),
             "i_statements": q.get("i_statements", []),
             "subtopics": q.get("subtopics", []),
             "source_url": q.get("source_url", ""),
@@ -1132,46 +1103,49 @@ if result:
 
             if qid in qs_map:
                 qs = qs_map[qid]
-                tab_labels = ["We statement", "We explanation", "What it means", "What it means (bullets)", "I statements", "Subtopics", "Source", "Matched (if any)"]
+                tab_labels = [
+                    "We statement",
+                    "What it means",
+                    "I statements",
+                    "Subtopics",
+                    "Source",
+                    "Matched (if any)",
+                ]
                 tabs = st.tabs(tab_labels)
 
                 with tabs[0]:
                     st.write(qs.get("we_statement", "_(none)_") or "_(none)_")
                 with tabs[1]:
-                    st.write(qs.get("we_explanation", qs.get("we explanation", "_(none)_")) or "_(none)_")
+                    st.write(
+                        qs.get(
+                            "what_this_quality_statement_means",
+                            qs.get("what this quality statement means", "_(none)_"),
+                        )
+                        or "_(none)_"
+                    )
                 with tabs[2]:
-                    st.write(qs.get("what_this_quality_statement_means", qs.get("what this quality statement means", "_(none)_")) or "_(none)_")
-                with tabs[3]:
-                    bullets = parse_bullets(qs.get("what_this_quality_statement_means", ""))
-                    if bullets:
-                        for b in bullets:
-                            st.write(f"- {b}")
-                    else:
-                        st.write("_(none)_")
-                with tabs[4]:
                     i_list = qs.get("i_statements") or []
                     if i_list:
                         for s in i_list:
                             st.write(f"- {s}")
                     else:
                         st.write("_(none)_")
-                with tabs[5]:
+                with tabs[3]:
                     subs = qs.get("subtopics") or []
                     if subs:
                         for s in subs:
                             st.write(f"- {s}")
                     else:
                         st.write("_(none)_")
-                with tabs[6]:
+                with tabs[4]:
                     src = qs.get("source_url")
                     if src:
                         st.markdown(f"[Open the official CQC page]({src})")
                     else:
                         st.write("_(none)_")
-                with tabs[7]:
+                with tabs[5]:
                     mi = q.get("matched_i_statements") or []
                     ms = q.get("matched_subtopics") or []
-                    mb = q.get("matched_means_bullets") or []
                     if mi:
                         st.write("**Matched I statements:**")
                         for s in mi:
@@ -1180,11 +1154,7 @@ if result:
                         st.write("**Matched subtopics:**")
                         for s in ms:
                             st.write(f"- {s}")
-                    if mb:
-                        st.write("**Matched 'What it means' bullets:**")
-                        for s in mb:
-                            st.write(f"- {s}")
-                    if not mi and not ms and not mb:
+                    if not mi and not ms:
                         st.write("_(none returned by model)_")
 
         default_ids = [q.get("id") for q in sugg_qs if q.get("id") in qs_map]
