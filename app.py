@@ -720,19 +720,35 @@ class LLMProvider:
         qs_brief = build_qs_brief(taxonomy)
         cats_brief = build_evidence_category_brief(taxonomy)
         system_prompt = (
-            "You are a compliance assistant for a CQC-regulated care service.\n"
-            "You will be given image(s) of an evidence item (scan/photo). Map it to one or more CQC Quality Statements "
-            "and to the main Evidence Category.\n\n"
-            "GROUNDING MATERIAL provided for each Quality Statement includes:\n"
-            "- 'we_statement' (verbatim)\n"
-            "- 'what_this_quality_statement_means' (verbatim)\n"
-            "- 'i_statements'\n"
-            "- 'subtopics'\n"
-            "- 'source_url'\n"
-            "Use these verbatim texts to make precise mappings. Prefer precision over breadth. "
-            "Justify each mapping with a short rationale referencing visible content, and include the exact matching text for the 'we_statement' and "
-            "the 'what_this_quality_statement_means' block in addition to selecting matching I-statements or subtopics. "
-            "Return ONLY a JSON object per the schema."
+            """You are a compliance assistant for a CQC-regulated care service.
+You will be given image(s) of an evidence item (scan/photo). Your task is to map it to:
+1. One or more CQC Quality Statements
+2. The main Evidence Category
+
+GROUNDING MATERIAL is provided for each Quality Statement and contains:
+- we_statement (verbatim)
+- what_this_quality_statement_means (verbatim)
+- i_statements
+- subtopics
+- source_url
+
+Selection Rules:
+- Primary filter: Only select a Quality Statement if its we_statement clearly and directly matches the evidence content.
+- Precision over breadth: Do not select "close enough" or loosely related statements.
+- If no clear match exists, return no Quality Statement for that evidence.
+
+Additional Matching:
+- For each selected Quality Statement, also check what_this_quality_statement_means, i_statements, and subtopics for exact or near-verbatim matches visible in the evidence.
+
+Justification Requirements:
+For every selected Quality Statement, provide:
+- A short rationale explaining the match, referencing visible evidence content.
+- The exact matching text for we_statement.
+- The exact matching text for what_this_quality_statement_means.
+- Any matching i_statements or subtopics (verbatim).
+
+Output:
+Return only a JSON object that follows the provided schema. Do not include any extra text outside the JSON."""
         )
         schema_and_options = {
             "schema": {
@@ -909,6 +925,15 @@ with st.sidebar:
     auto_fallback = st.checkbox("Auto-fallback on 429/5xx", value=True)
     fallback_model = st.text_input("Fallback model", value="gpt-5-mini")
 
+    st.markdown("**Classification filter**")
+    we_conf_threshold = st.number_input(
+        "Minimum 'we' statement confidence",
+        min_value=0.0,
+        max_value=1.0,
+        value=0.8,
+        step=0.05,
+    )
+
     move_or_copy = st.radio("On approval, file by…", ["Copy", "Move"], index=0)
     st.caption("Nothing is filed without your approval. Every decision is logged.")
 
@@ -977,7 +1002,12 @@ if files and st.button("Auto-classify all files (no manual review)"):
                     "action": "error",
                 })
             else:
-                selected_qs = [q.get("id") for q in result.get("quality_statements", []) if q.get("id") in qs_map]
+                filtered_qs = [
+                    q
+                    for q in result.get("quality_statements", [])
+                    if q.get("confidence", 0) >= we_conf_threshold and q.get("matched_we_statement")
+                ]
+                selected_qs = [q.get("id") for q in filtered_qs if q.get("id") in qs_map]
                 selected_q_titles = [qs_map[qid]["title"] for qid in selected_qs if qid in qs_map]
                 selected_cats = [c for c in result.get("evidence_categories", []) if c in cat_options]
                 paths = propose_storage_paths(taxonomy, selected_qs, selected_cats)
@@ -1097,7 +1127,12 @@ if result:
         with st.expander("Raw output"):
             st.code(result.get('raw', ''))
     else:
-        sugg_qs = result.get("quality_statements", [])
+        all_qs = result.get("quality_statements", [])
+        sugg_qs = [
+            q
+            for q in all_qs
+            if q.get("confidence", 0) >= we_conf_threshold and q.get("matched_we_statement")
+        ]
         st.markdown("**Model’s suggested Quality Statements:**")
         for q in sugg_qs:
             qid = q.get("id")
