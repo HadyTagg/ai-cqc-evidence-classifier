@@ -1,0 +1,154 @@
+ (cd "$(git rev-parse --show-toplevel)" && git apply --3way <<'EOF' 
+diff --git a/app.py b/app.py
+index d841a2194de10a4ab5eee3d2e238af88902acd55..063f5b9986e5c4cbc3d25d57d64dc89be1ac9839 100644
+--- a/app.py
++++ b/app.py
+@@ -708,69 +708,72 @@ def _normalize_model_for_chat(m: str) -> str:
+ class LLMProvider:
+     def __init__(self, provider: str, model: str, api_key: str = "", timeout: int = 60, max_retries: int = 3):
+         self.provider = provider
+         self.model = model
+         self.api_key = api_key
+         self.timeout = timeout
+         self.max_retries = max_retries
+         self.llm_image_max_width = 1024
+         self.auto_fallback = True
+         self.fallback_model = "gpt-5-mini"
+ 
+     def classify_images(self, images: List[Image.Image], taxonomy: Dict[str, Any], max_images: int = 4) -> Dict[str, Any]:
+         qs_brief = build_qs_brief(taxonomy)
+         cats = taxonomy.get("evidence_categories", [])
+         system_prompt = (
+             "You are a compliance assistant for a CQC-regulated care service.\n"
+             "You will be given image(s) of an evidence item (scan/photo). Map it to one or more CQC Quality Statements "
+             "and to the main Evidence Category.\n\n"
+             "GROUNDING MATERIAL provided for each Quality Statement includes:\n"
+             "- 'we_statement' (verbatim)\n"
+             "- 'what_this_quality_statement_means' (verbatim)\n"
+             "- 'i_statements'\n"
+             "- 'subtopics'\n"
+             "- 'source_url'\n"
+             "Use these verbatim texts to make precise mappings. Prefer precision over breadth. "
+-            "Justify each mapping with a short rationale referencing visible content, and select matching I-statements or subtopics."
+-            " Return ONLY a JSON object per the schema."
++            "Justify each mapping with a short rationale referencing visible content, and indicate matches for the 'we_statement' and "
++            "the 'what_this_quality_statement_means' block in addition to selecting matching I-statements or subtopics. "
++            "Return ONLY a JSON object per the schema."
+         )
+         schema_and_options = {
+             "schema": {
+                 "type": "object",
+                 "properties": {
+                     "quality_statements": {
+                         "type": "array",
+                         "items": {
+                             "type": "object",
+                             "properties": {
+                                 "id": {"type": "string"},
+                                 "title": {"type": "string"},
+                                 "domain": {"type": "string"},
+                                 "confidence": {"type": "number"},
+                                 "rationale": {"type": "string"},
+                                 "matched_i_statements": {"type": "array", "items": {"type": "string"}},
+                                 "matched_subtopics": {"type": "array", "items": {"type": "string"}},
++                                "matched_we_statement": {"type": "boolean"},
++                                "matched_what_it_means": {"type": "boolean"},
+                             },
+                             "required": ["id", "confidence"],
+                         },
+                     },
+                     "evidence_categories": {"type": "array", "items": {"type": "string"}},
+                     "notes": {"type": "string"},
+                 },
+                 "required": ["quality_statements", "evidence_categories"],
+             },
+             "quality_statements_options": qs_brief,
+             "evidence_categories_options": cats,
+         }
+         content = [{"type": "text", "text": json.dumps(schema_and_options)}]
+         max_w = getattr(self, "llm_image_max_width", 1024)
+         for img in images[:max_images]:
+             ds = downscale_for_llm(img, max_w=max_w)
+             content.append({"type": "image_url", "image_url": {"url": pil_to_data_url_jpeg(ds)}})
+         return self._chat_json(system_prompt, None, content_override=content)
+ 
+     def _chat_json(self, system_prompt: str, user_payload: Dict[str, Any] | None, content_override: List[Dict[str, Any]] | None = None) -> Dict[str, Any]:
+         if self.provider != "openai":
+             return {"error": "Vision classification currently implemented for OpenAI Chat Completions only."}
+         url = "https://api.openai.com/v1/chat/completions"
+         headers = {"Authorization": f"Bearer {self.api_key or os.getenv('OPENAI_API_KEY','')}", "Content-Type": "application/json"}
+ 
+diff --git a/app.py b/app.py
+index d841a2194de10a4ab5eee3d2e238af88902acd55..063f5b9986e5c4cbc3d25d57d64dc89be1ac9839 100644
+--- a/app.py
++++ b/app.py
+@@ -1124,59 +1127,65 @@ if result:
+                         or "_(none)_"
+                     )
+                 with tabs[2]:
+                     i_list = qs.get("i_statements") or []
+                     if i_list:
+                         for s in i_list:
+                             st.write(f"- {s}")
+                     else:
+                         st.write("_(none)_")
+                 with tabs[3]:
+                     subs = qs.get("subtopics") or []
+                     if subs:
+                         for s in subs:
+                             st.write(f"- {s}")
+                     else:
+                         st.write("_(none)_")
+                 with tabs[4]:
+                     src = qs.get("source_url")
+                     if src:
+                         st.markdown(f"[Open the official CQC page]({src})")
+                     else:
+                         st.write("_(none)_")
+                 with tabs[5]:
+                     mi = q.get("matched_i_statements") or []
+                     ms = q.get("matched_subtopics") or []
++                    mw = q.get("matched_we_statement")
++                    mm = q.get("matched_what_it_means") or q.get("matched_what_this_quality_statement_means")
+                     if mi:
+                         st.write("**Matched I statements:**")
+                         for s in mi:
+                             st.write(f"- {s}")
+                     if ms:
+                         st.write("**Matched subtopics:**")
+                         for s in ms:
+                             st.write(f"- {s}")
+-                    if not mi and not ms:
++                    if mw:
++                        st.write("**We statement matched**")
++                    if mm:
++                        st.write("**'What it means' matched**")
++                    if not mi and not ms and not mw and not mm:
+                         st.write("_(none returned by model)_")
+ 
+         default_ids = [q.get("id") for q in sugg_qs if q.get("id") in qs_map]
+         selected_qs = st.multiselect(
+             "Confirm Quality Statements",
+             options=qs_id_list,
+             default=default_ids,
+             format_func=lambda qid: f"[{qs_map[qid]['domain']}] {qid} – {qs_map[qid]['title']}" if qid in qs_map else qid
+         )
+ 
+         sugg_cats = [c for c in result.get("evidence_categories", []) if c in cat_options]
+         selected_cats = st.multiselect("Confirm Evidence Categories (multi-select)", options=cat_options, default=sugg_cats or cat_options[:1])
+ 
+         st.markdown("**Proposed storage paths:**")
+         paths = propose_storage_paths(taxonomy, selected_qs, selected_cats)
+         for p in paths:
+             st.write(f"- {p}")
+ 
+         selected_titles = [qs_map[qid]["title"] for qid in selected_qs if qid in qs_map]
+ 
+         notes = st.text_area("Reviewer notes (optional)", value=result.get("notes", ""))
+         signed_off = st.checkbox("I confirm the above classification and approve filing.")
+         reviewer = st.text_input("Your name for the audit log", value=os.getenv("USER", "Reviewer"))
+         col1, col2 = st.columns([1,1])
+         with col1:
+ 
+EOF
+)

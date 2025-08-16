@@ -730,8 +730,9 @@ class LLMProvider:
             "- 'subtopics'\n"
             "- 'source_url'\n"
             "Use these verbatim texts to make precise mappings. Prefer precision over breadth. "
-            "Justify each mapping with a short rationale referencing visible content, and select matching I-statements or subtopics."
-            " Return ONLY a JSON object per the schema."
+            "Justify each mapping with a short rationale referencing visible content, and indicate matches for the 'we_statement' and "
+            "the 'what_this_quality_statement_means' block in addition to selecting matching I-statements or subtopics. "
+            "Return ONLY a JSON object per the schema."
         )
         schema_and_options = {
             "schema": {
@@ -749,6 +750,8 @@ class LLMProvider:
                                 "rationale": {"type": "string"},
                                 "matched_i_statements": {"type": "array", "items": {"type": "string"}},
                                 "matched_subtopics": {"type": "array", "items": {"type": "string"}},
+                                "matched_we_statement": {"type": "boolean"},
+                                "matched_what_it_means": {"type": "boolean"},
                             },
                             "required": ["id", "confidence"],
                         },
@@ -1146,6 +1149,8 @@ if result:
                 with tabs[5]:
                     mi = q.get("matched_i_statements") or []
                     ms = q.get("matched_subtopics") or []
+                    mw = q.get("matched_we_statement")
+                    mm = q.get("matched_what_it_means") or q.get("matched_what_this_quality_statement_means")
                     if mi:
                         st.write("**Matched I statements:**")
                         for s in mi:
@@ -1154,7 +1159,11 @@ if result:
                         st.write("**Matched subtopics:**")
                         for s in ms:
                             st.write(f"- {s}")
-                    if not mi and not ms:
+                    if mw:
+                        st.write("**We statement matched**")
+                    if mm:
+                        st.write("**'What it means' matched**")
+                    if not mi and not ms and not mw and not mm:
                         st.write("_(none returned by model)_")
 
         default_ids = [q.get("id") for q in sugg_qs if q.get("id") in qs_map]
