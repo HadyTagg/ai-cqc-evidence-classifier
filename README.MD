@@ -1,8 +1,20 @@
 How the classifier processes evidence
-Only preview images are sent to the LLM. Each document is rasterized into images, but the program limits both the number of pages converted and the images forwarded to the model (max_pages and max_images, defaults of 2 and 4 respectively)
 
-All documents are transformed into images before classification. PDFs are rendered with pdf2image; DOCX files are converted to PDF then rendered, or, if conversion fails, their text is rendered into an image; emails and plain text files are similarly converted to image form via text_to_image. This ensures the model always receives images, even for originally textual sources
+Image-based input to the LLM – Only preview images are sent for classification. All documents are rasterized into images, with limits on both pages converted and images sent (max_pages default = 2, max_images default = 4).
 
-Meaning of “matched” fields. The model is asked to return, for each suggested quality statement, the identifiers plus any matching “I statements,” subtopics, and verbatim text from the taxonomy. These fields (matched_i_statements, matched_subtopics, matched_we_statement, matched_what_it_means) are supplied alongside a separate numeric confidence score, so the matches serve as justification rather than the sole determinant of confidence or final selection
+Document-to-image conversion – PDFs are rendered with pdf2image; DOCX files are converted to PDF then rendered, or, if that fails, their text is rendered as an image. Emails, plain text, and similar sources are also converted to images, ensuring the model always receives a visual representation.
 
-Selecting evidence categories and quality statements. Before calling the model, the app extracts structured options from the taxonomy—build_qs_brief and build_evidence_category_brief—and embeds them in the prompt. The LLM uses these options, together with the preview images, to choose appropriate evidence categories and quality statements
+Embedding taxonomy data – Before classification, the app extracts all quality statements and evidence categories from the taxonomy using build_qs_brief and build_evidence_category_brief. Each quality statement includes its ID, domain, title, “we” statement, “what it means” text, I-statements, subtopics, and source URL. This structured list is embedded in the LLM prompt.
+
+Selection process – The model compares the preview images against the taxonomy entries and returns the IDs of the best-matching quality statements, along with:
+
+Confidence scores
+
+Matching I-statements
+
+Matching subtopics
+
+Matching “we” statements
+
+Matching “what it means” text
+These matches act as justifications for the selection rather than the sole determinant.
