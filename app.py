@@ -720,35 +720,19 @@ class LLMProvider:
         qs_brief = build_qs_brief(taxonomy)
         cats_brief = build_evidence_category_brief(taxonomy)
         system_prompt = (
-            """You are a compliance assistant for a CQC-regulated care service.
-You will be given image(s) of an evidence item (scan/photo). Your task is to map it to:
-1. One or more CQC Quality Statements
-2. The main Evidence Category
-
-GROUNDING MATERIAL is provided for each Quality Statement and contains:
-- we_statement (verbatim)
-- what_this_quality_statement_means (verbatim)
-- i_statements
-- subtopics
-- source_url
-
-Selection Rules:
-- Primary filter: Only select a Quality Statement if its we_statement clearly and directly matches the evidence content.
-- Precision over breadth: Do not select "close enough" or loosely related statements.
-- If no clear match exists, return no Quality Statement for that evidence.
-
-Additional Matching:
-- For each selected Quality Statement, also check what_this_quality_statement_means, i_statements, and subtopics for exact or near-verbatim matches visible in the evidence.
-
-Justification Requirements:
-For every selected Quality Statement, provide:
-- A short rationale explaining the match, referencing visible evidence content.
-- The exact matching text for we_statement.
-- The exact matching text for what_this_quality_statement_means.
-- Any matching i_statements or subtopics (verbatim).
-
-Output:
-Return only a JSON object that follows the provided schema. Do not include any extra text outside the JSON."""
+                "You are a compliance assistant for a CQC-regulated care service.\n"
+    "You will be given image(s) of an evidence item. "
+    "Map it to one or more CQC Quality Statements and to the main Evidence Categories.\n\n"
+    "GROUNDING MATERIAL provided for each Quality Statement includes:\n"
+    "- 'we_statement'\n"
+    "- 'what_this_quality_statement_means'\n"
+    "- 'i_statements'\n"
+    "- 'subtopics'\n"
+    "- 'source_url'\n"
+    "Use these texts to make precise mappings. Prefer precision over breadth."
+    "Justify each mapping with a rationale referencing visible content, and include the exact matching text for the "
+    "'we_statement', 'what_this_quality_statement_means', I-statements "
+    "or subtopics. Return ONLY a JSON object per the schema."
         )
         schema_and_options = {
             "schema": {
