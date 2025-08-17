@@ -21,7 +21,7 @@ Output strictly a JSON object with this structure:
       "title": "Title",
       "domain": "Domain",
       "confidence": 0.0-1.0,
-      "rationale": "Brief reference to the evidence",
+      "rationale": "Reference to the evidence",
       "matched_we_statement": "Exact text",
       "matched_what_it_means": "Exact text",
       "matched_i_statements": ["Exact text", "..."],

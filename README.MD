@@ -19,7 +19,3 @@ Matching “we” statements
 Matching “what it means” text
 
 These matches act as justifications for the selection rather than the sole determinant.
-
-The app enumerates every quality statement from the taxonomy with its ID, domain, title, “we” statement, “what it means” text, I‑statements, subtopics, and source URL via build_qs_brief, then embeds this list in the prompt schema sent to the LLM.
-
-When preview images of the evidence are supplied, the model selects the statements whose descriptions best match the visible content and returns their IDs, confidence scores, and matching text, yielding the suggested quality statements for classification.
