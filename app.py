@@ -56,6 +56,7 @@ except Exception:
 
 APP_TITLE = "CQC Evidence Classifier"
 DEFAULT_DECISIONS_LOG = "decisions.csv"
+SYSTEM_PROMPT = Path("system_prompt.md").read_text(encoding="utf-8")
 SUPPORTED_EXTS = {
     ".txt", ".pdf", ".docx", ".csv", ".xlsx", ".xlsm", ".xls", ".eml", ".msg",
     ".png", ".jpg", ".jpeg", ".tif", ".tiff", ".bmp", ".webp", ".heic"
