@@ -720,20 +720,7 @@ class LLMProvider:
         qs_brief = build_qs_brief(taxonomy)
         cats_brief = build_evidence_category_brief(taxonomy)
         system_prompt = (
-                "You are a compliance assistant for a CQC-regulated care service.\n"
-    "You will be given image(s) of an evidence item. "
-    "Map it to one or more CQC Quality Statements and to the main Evidence Categories.\n\n"
-    "GROUNDING MATERIAL provided for each Quality Statement includes:\n"
-    "- 'we_statement'\n"
-    "- 'what_this_quality_statement_means'\n"
-    "- 'i_statements'\n"
-    "- 'subtopics'\n"
-    "- 'source_url'\n"
-    "Use these texts to make precise mappings. Prefer precision over breadth."
-    "Justify each mapping with a rationale referencing visible content, and include the exact matching text for the "
-    "'we_statement', 'what_this_quality_statement_means', I-statements "
-    "or subtopics. Return ONLY a JSON object per the schema."
-        )
+       SYSTEM_PROMPT)
         schema_and_options = {
             "schema": {
                 "type": "object",
