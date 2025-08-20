@@ -1,0 +1,80 @@
+File Deduplication & Flattening Tool
+
+Script: dedupe_flatten.py
+
+This tool scans a directory (and all subdirectories), removes duplicate files, and consolidates all remaining files into a single output folder.
+A detailed log file records every deletion, move, and note.
+
+Basic Usage
+
+Dry run (no changes made, just a report):
+
+python dedupe_flatten.py /path/to/root
+
+
+Actually perform deletions and moves:
+
+python dedupe_flatten.py /path/to/root --apply
+
+Options
+
+root
+Path to the directory you want to process (required).
+
+--apply
+Actually delete duplicates and move files.
+Without this flag, the script runs in dry run mode and only generates a log.
+
+--out-folder NAME
+Name of the folder (inside root) where consolidated files will be placed.
+Default: _consolidated
+
+--log-file NAME
+Name of the log file (inside root).
+Default: dedupe_log.txt
+
+--case-insensitive
+Treat filenames case-insensitively when comparing (useful on Windows/macOS).
+
+--mode
+How duplicates are detected.
+
+name-size-hash (default): Only files with the same name and size are considered, and duplicates are confirmed by content hash.
+
+content: Files with the same content (size+hash) are duplicates, even if their names differ.
+
+--hash {sha256, blake2b, md5}
+Hash algorithm used for content confirmation.
+Default: sha256
+
+--use-quick-fingerprint
+Speeds up deduplication on large directories by comparing the first/last 64KB of files before doing a full hash.
+(Full hashing is still done before confirming duplicates.)
+
+Examples
+
+Dry run, case-insensitive filename comparison:
+
+python dedupe_flatten.py /data/photos --case-insensitive
+
+
+Content-based deduplication (ignore filenames):
+
+python dedupe_flatten.py /data/docs --mode content --apply
+
+
+Faster run on large dataset with quick fingerprint:
+
+python dedupe_flatten.py /data/music --use-quick-fingerprint --apply
+
+Log File
+
+Default location: dedupe_log.txt inside the root folder.
+
+Records:
+
+Which files were deleted and why (e.g., duplicate by name+size+hash).
+
+Which files were moved and their new location.
+
+Any errors or notes (e.g., files with same name+size but different content).

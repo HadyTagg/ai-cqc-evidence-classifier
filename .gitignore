@@ -1,13 +1,13 @@
-# Python virtual environments
+# Python virtual environment
 .venv/
-venv/
-env/
-ENV/
 
 # app files and folders
 input/
 classified/
+unclassified_bad/
 decisions.csv
+
+# caches
 .llm_cache/
 .docx_pdf/
 .sheet_pdf/
@@ -20,3 +20,6 @@ decisions.csv
 .*.swp
 .*.swo
 .*.swn
+
+# OpenAI API Key
+openai_api_key.txt
