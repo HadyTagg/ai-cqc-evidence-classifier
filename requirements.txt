@@ -4,6 +4,7 @@
 streamlit>=1.36       # Web app framework for interactive dashboards and tools
 pandas>=2.2           # Data analysis library for tabular data, CSVs, spreadsheets
 PyYAML>=6.0           # Read/write YAML config and taxonomy files
+matplotlib>=3.8       # For analyser
 
 # =========================================
 # Document Parsing
